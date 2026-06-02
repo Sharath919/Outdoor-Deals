@@ -7,82 +7,17 @@ import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-c
 import type { AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
 import type { ArticleProductSpec, HydratedProduct } from './types'
 import { isCacheStale, loadPaapiCache, mergeCache, savePaapiCache } from './cache'
-
-type PaapiItem = Record<string, unknown>
-
-const PAAPI_RESOURCES = [
-  'Images.Primary.Large',
-  'Images.Primary.Medium',
-  'ItemInfo.Title',
-  'ItemInfo.Features',
-  'ItemInfo.ProductInfo',
-  'ItemInfo.ByLineInfo',
-  'Offers.Listings.Price',
-]
+import {
+  getItemByAsin,
+  isValidPaapiItem,
+  searchProductByKeywords,
+  type PaapiItem,
+} from './paapi-client'
 
 const PAAPI_RATE_LIMIT_MS = 1100
 
 function getSearchKeywords(product: ArticleProductSpec): string {
   return product.search_keywords?.trim() || product.name?.trim() || ''
-}
-
-async function getPaapiClient(config: AmazonAffiliateServerConfig) {
-  if (!config.paapiAccessKey || !config.paapiSecretKey) return null
-  try {
-    const mod = await import('amazon-paapi')
-    const amazonPaapi = mod.default ?? mod
-    return {
-      client: amazonPaapi,
-      commonParams: {
-        AccessKey: config.paapiAccessKey,
-        SecretKey: config.paapiSecretKey,
-        PartnerTag: config.associateTag,
-        PartnerType: 'Associates',
-        Marketplace: config.marketplace || 'www.amazon.com',
-      },
-    }
-  } catch (err) {
-    console.warn('[affiliate-pipeline] PA-API import failed:', err)
-    return null
-  }
-}
-
-function isValidPaapiItem(item: PaapiItem | undefined): boolean {
-  if (!item) return false
-  const info = item.ItemInfo as Record<string, unknown> | undefined
-  const titleObj = info?.Title as { DisplayValue?: string } | undefined
-  return Boolean(titleObj?.DisplayValue?.trim())
-}
-
-async function searchProductByKeywords(
-  keywords: string,
-  config: AmazonAffiliateServerConfig,
-): Promise<{ asin: string; item: PaapiItem } | null> {
-  const paapi = await getPaapiClient(config)
-  const query = keywords.trim()
-  if (!paapi || !query) return null
-
-  try {
-    const response = await paapi.client.SearchItems({
-      ...paapi.commonParams,
-      Keywords: query,
-      SearchIndex: 'SportingGoods',
-      ItemCount: 1,
-      Resources: PAAPI_RESOURCES,
-    })
-
-    const items =
-      (response as { SearchResult?: { Items?: PaapiItem[] } }).SearchResult?.Items ?? []
-    const first = items[0]
-    const asin = String((first as { ASIN?: string })?.ASIN ?? '')
-    if (asin && isValidPaapiItem(first)) {
-      return { asin, item: first }
-    }
-  } catch (err) {
-    console.error('[affiliate-pipeline] PA-API SearchItems failed:', err)
-  }
-
-  return null
 }
 
 function shapePaapiProduct(
@@ -97,10 +32,17 @@ function shapePaapiProduct(
   const brandObj = (info?.ByLineInfo as { Brand?: { DisplayValue?: string } } | undefined)?.Brand
   const images = item.Images as { Primary?: { Large?: { URL?: string }; Medium?: { URL?: string } } } | undefined
   const offers = item.Offers as { Listings?: Array<{ Price?: { DisplayAmount?: string } }> } | undefined
+  const offersV2 = item.OffersV2 as
+    | { Listings?: Array<{ Price?: { DisplayAmount?: string; Money?: { DisplayAmount?: string } } }> }
+    | undefined
 
   const catalogTitle = titleObj?.DisplayValue ?? ''
   const image = images?.Primary?.Large?.URL ?? images?.Primary?.Medium?.URL ?? null
-  const price = offers?.Listings?.[0]?.Price?.DisplayAmount ?? null
+  const price =
+    offers?.Listings?.[0]?.Price?.DisplayAmount ??
+    offersV2?.Listings?.[0]?.Price?.DisplayAmount ??
+    offersV2?.Listings?.[0]?.Price?.Money?.DisplayAmount ??
+    null
 
   return {
     affiliate_url,
@@ -163,12 +105,20 @@ async function resolveProduct(
     }
   }
 
-  // Reuse cached PA-API result only for ASINs previously resolved by our pipeline
   const cachedAsin = product.asin?.trim()
   if (cachedAsin) {
     const cached = nextCache[cachedAsin]
     if (cached && !isCacheStale(cached) && isValidPaapiItem(cached)) {
       return { product: applyValidated(cachedAsin, cached), cache: nextCache }
+    }
+
+    if (paapiConfigured) {
+      const fetched = await getItemByAsin(cachedAsin, config)
+      await new Promise((r) => setTimeout(r, PAAPI_RATE_LIMIT_MS))
+      if (fetched) {
+        nextCache = mergeCache(nextCache, fetched.asin, fetched.item)
+        return { product: applyValidated(fetched.asin, fetched.item), cache: nextCache }
+      }
     }
   }
 
@@ -182,7 +132,7 @@ async function resolveProduct(
     }
 
     warnings.push(
-      `PA-API found no match for "${keywords}" — using Amazon search link`,
+      `PA-API found no match for "${keywords}" — using Amazon search link (check PA-API credentials and associate sales quota)`,
     )
   } else if (!keywords) {
     warnings.push('Product missing name and search_keywords — skipped resolution')
@@ -204,10 +154,16 @@ export async function hydrateProducts(
   const config = await readAmazonAffiliateServerConfig()
   const warnings: string[] = []
   const associateTag = config.associateTag
-  const paapiConfigured = Boolean(config.paapiAccessKey && config.paapiSecretKey)
+  const paapiConfigured = Boolean(
+    config.paapiAccessKey && config.paapiSecretKey && config.associateTag,
+  )
 
   if (!associateTag) {
     warnings.push('No associate tag configured — affiliate URLs may be incomplete')
+  } else if (!paapiConfigured) {
+    warnings.push(
+      'PA-API not fully configured — save access key, secret key, and associate tag in Admin → Amazon Affiliate',
+    )
   }
 
   let cache = await loadPaapiCache(supabase)
