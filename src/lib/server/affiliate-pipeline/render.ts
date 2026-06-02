@@ -27,9 +27,17 @@ function renderMarkdown(md: string): string {
 function renderBodyContent(body: string): string {
   const trimmed = body.trim()
   if (!trimmed) return ''
-  if (/<\/?(?:div|span|ul|ol|table|h[1-6])\b/i.test(trimmed)) {
-    return renderMarkdown(htmlParagraphsToText(trimmed))
+
+  // Never run marked on HTML — it becomes escaped <pre><code> blocks (GFM)
+  if (/[<]/.test(trimmed)) {
+    const text = htmlParagraphsToText(trimmed)
+    if (!text) return ''
+    return text
+      .split(/\n\n+/)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join('\n')
   }
+
   return renderMarkdown(trimmed)
 }
 

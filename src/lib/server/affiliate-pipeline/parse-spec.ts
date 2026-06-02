@@ -1,4 +1,5 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
+import { extractEditorialReviewBody, repairCorruptedPipelineHtml } from './repair-html'
 import {
   extractListItems,
   filterProductSpecs,
@@ -75,10 +76,7 @@ function parsePipelineProductBlock(sectionHtml: string, headingRaw: string): Art
     sectionHtml.match(/<span class="price-value">([^<]*)<\/span>/i)?.[1]?.trim()
 
   let bodyRaw = extractDivClassContent(sectionHtml, 'review-body', 'review-cta')
-  bodyRaw = bodyRaw
-    .replace(/<div class="bottom-line">[\s\S]*$/i, '')
-    .replace(/<div class="product-review">[\s\S]*$/i, '')
-    .trim()
+  bodyRaw = extractEditorialReviewBody(bodyRaw)
   const body = htmlParagraphsToText(bodyRaw)
 
   const bottom_line =
@@ -169,7 +167,7 @@ function collectProductHeadings(html: string): HeadingMatch[] {
 }
 
 export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> = {}): ArticleSpec {
-  let working = html.trim()
+  let working = repairCorruptedPipelineHtml(html.trim())
 
   const tableMatch = working.match(/<table\b[\s\S]*?<\/table>/i)
   if (tableMatch) {

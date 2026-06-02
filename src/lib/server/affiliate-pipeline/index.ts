@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { hydrateProducts } from './fetch-products'
 import { buildSpecFromClaudeOutput } from './parse-spec'
+import { repairCorruptedPipelineHtml } from './repair-html'
 import { renderArticleBody } from './render'
 import { linkProductsToArticle } from './link-products'
 import type { ArticleSpec, HydratedArticleSpec, PipelineResult } from './types'
@@ -13,9 +14,10 @@ export async function runAffiliatePipeline(
     spec?: ArticleSpec
   },
 ): Promise<PipelineResult> {
+  const contentHtml = repairCorruptedPipelineHtml(input.contentHtml)
   const spec =
     input.spec ??
-    buildSpecFromClaudeOutput(input.contentHtml, input.articleJson ?? {})
+    buildSpecFromClaudeOutput(contentHtml, input.articleJson ?? {})
 
   const warnings: string[] = []
   if (spec.products.length === 0) {

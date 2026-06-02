@@ -1,4 +1,5 @@
 import type { GuideProduct } from '@/lib/articles-server'
+import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
 
 export type GuideArticleSegments = {
@@ -289,7 +290,7 @@ export function prepareGuideArticleHtml(
   rawHtml: string,
   products: GuideProduct[] = [],
 ): GuideArticleSegments {
-  let html = prepareArticleContentHtml(rawHtml)
+  let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
 
   const isPipelineHtml = /\bproduct-review\b/.test(html)
