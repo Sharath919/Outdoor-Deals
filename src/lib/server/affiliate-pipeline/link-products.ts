@@ -21,8 +21,8 @@ export async function linkProductsToArticle(
     const affiliateUrl = product.affiliate_url?.trim()
     if (!affiliateUrl || affiliateUrl === 'https://www.amazon.com/dp/') continue
 
-    const asin = product.asin?.trim() || null
-    if (asin && !/^[A-Z0-9]{10}$/i.test(asin)) continue
+    const asinRaw = product.asin?.trim() || ''
+    const asin = /^[A-Z0-9]{10}$/i.test(asinRaw) ? asinRaw.toUpperCase() : null
 
     const title = product.name?.trim() || `Product ${asin ?? 'unknown'}`
 

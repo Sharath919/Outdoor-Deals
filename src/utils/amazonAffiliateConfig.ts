@@ -92,6 +92,15 @@ export function isPaapiConfigured(config: AmazonAffiliateConfig): boolean {
   return config.hasPaapiAccessKey && config.hasPaapiSecretKey && Boolean(config.associateTag)
 }
 
+/** Decode HTML entities in URLs parsed from Claude HTML before re-escaping for output. */
+export function normalizeAffiliateUrl(href: string): string {
+  return href
+    .trim()
+    .replace(/&amp;/gi, '&')
+    .replace(/&#0*38;/g, '&')
+    .replace(/\\u0026/gi, '&')
+}
+
 export function buildAffiliateProductUrl(asin: string, associateTag: string): string {
   const id = asin.trim()
   const tag = associateTag.trim()

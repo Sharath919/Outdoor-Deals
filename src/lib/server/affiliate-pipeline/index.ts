@@ -20,7 +20,7 @@ export async function runAffiliatePipeline(
   const warnings: string[] = []
   if (spec.products.length === 0) {
     warnings.push(
-      'No products with Amazon ASINs found — add /dp/ASIN links or a products JSON array with asin fields',
+      'No products found — add a products JSON array with name and search_keywords fields',
     )
   }
 

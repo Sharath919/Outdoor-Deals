@@ -1,4 +1,5 @@
 import type { ArticleProductSpec } from './types'
+import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
 
 export function stripHtml(text: string): string {
   return text.replace(/<[^>]+>/g, '').trim()
@@ -39,7 +40,7 @@ export function extractAmazonLink(sectionHtml: string): { href: string; asin: st
   const linkRe = /<a\b[^>]*href="([^"]+)"[^>]*>/gi
   let match: RegExpExecArray | null
   while ((match = linkRe.exec(sectionHtml)) !== null) {
-    const href = match[1]
+    const href = normalizeAffiliateUrl(match[1])
     if (!/amazon\.com/i.test(href)) continue
     const asin = extractAsinFromHref(href)
     if (asin) return { href, asin }
@@ -59,17 +60,12 @@ export function extractAmazonLink(sectionHtml: string): { href: string; asin: st
 
 export function isValidProductSpec(product: ArticleProductSpec): boolean {
   const name = product.name?.trim() ?? ''
-  if (!name || name.length < 3) return false
-  if (NON_PRODUCT_HEADING.test(name)) return false
-  if (/^(should|how|what|when|where|why)\b/i.test(name)) return false
-
-  const asin = product.asin?.trim() ?? ''
-  if (/^[A-Z0-9]{10}$/.test(asin)) return true
-
-  const linkAsin = product.affiliate_url ? extractAsinFromHref(product.affiliate_url) : null
-  if (linkAsin) return true
-
-  return false
+  const keywords = product.search_keywords?.trim() ?? ''
+  const label = name || keywords
+  if (!label || label.length < 3) return false
+  if (NON_PRODUCT_HEADING.test(label)) return false
+  if (/^(should|how|what|when|where|why)\b/i.test(label)) return false
+  return true
 }
 
 export function filterProductSpecs(products: ArticleProductSpec[]): ArticleProductSpec[] {

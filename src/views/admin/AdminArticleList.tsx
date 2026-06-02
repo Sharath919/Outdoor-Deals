@@ -149,6 +149,7 @@ export default function AdminArticleList() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [confirmModal, setConfirmModal] = useState<ConfirmState | null>(null)
   const [goToPageInput, setGoToPageInput] = useState('')
+  const [hydrateWarnings, setHydrateWarnings] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     setSearchInput(q)
@@ -380,8 +381,22 @@ export default function AdminArticleList() {
         `Linked ${data.products_linked ?? 0} products${data.warnings?.length ? ` (${data.warnings.length} warnings)` : ''}`,
         { id: toastId },
       )
-      if (data.warnings?.length) {
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setHydrateWarnings((prev) => ({ ...prev, [article.id]: data.warnings as string[] }))
+        toast.warning(data.warnings.slice(0, 3).join('\n'), {
+          duration: 12_000,
+          description:
+            data.warnings.length > 3
+              ? `+ ${data.warnings.length - 3} more — open browser console for full list`
+              : undefined,
+        })
         console.warn('[hydrate-article]', data.warnings)
+      } else {
+        setHydrateWarnings((prev) => {
+          const next = { ...prev }
+          delete next[article.id]
+          return next
+        })
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -790,6 +805,13 @@ export default function AdminArticleList() {
                     {' · '}
                     {new Date(article.updated_at).toLocaleDateString()}
                   </p>
+                  {hydrateWarnings[article.id]?.length ? (
+                    <ul className="mt-2 space-y-1 text-xs text-amber-400/90 max-w-xl">
+                      {hydrateWarnings[article.id].map((warning) => (
+                        <li key={warning}>⚠ {warning}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
 
                 <div className="flex gap-2 shrink-0 flex-wrap justify-end">

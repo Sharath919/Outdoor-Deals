@@ -1,6 +1,5 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
 import {
-  extractAmazonLink,
   filterProductSpecs,
   isProductHeading,
   parseProductHeading,
@@ -44,9 +43,6 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
   const ulMatch = sectionHtml.match(/<ul\b[\s\S]*?<\/ul>/i)
   const { specs, pros, cons, price_range } = parseSpecList(ulMatch?.[0] ?? '')
 
-  const amazonLink = extractAmazonLink(sectionHtml)
-  const asin = amazonLink?.asin ?? ''
-
   let body = sectionHtml
     .replace(/<ul\b[\s\S]*?<\/ul>/i, '')
     .replace(/<a\b[^>]*class="[^"]*(?:affiliate-link|btn)[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '')
@@ -69,7 +65,7 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
   }
 
   return {
-    asin,
+    search_keywords: name,
     name,
     tagline,
     award_label: tagline,
@@ -79,7 +75,6 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
     body: body.replace(/<\/?p[^>]*>/gi, '\n\n').trim(),
     bottom_line,
     price_range,
-    affiliate_url: amazonLink?.href,
   }
 }
 
@@ -182,12 +177,14 @@ export function mergeJsonProducts(
 
   const merged = jsonProducts.map((raw, index) => {
     const row = raw as Record<string, unknown>
-    const asin = String(row.asin ?? '').trim()
     const name = String(row.name ?? row.title ?? '').trim()
     const htmlProduct = parsedByName.get(name.toLowerCase())
+    const searchKeywords = String(
+      row.search_keywords ?? htmlProduct?.search_keywords ?? '',
+    ).trim()
 
     return {
-      asin: asin || htmlProduct?.asin || '',
+      search_keywords: searchKeywords || name || htmlProduct?.name || '',
       name: name || htmlProduct?.name,
       award_label: String(row.award_label ?? htmlProduct?.award_label ?? ''),
       award_color: String(
@@ -204,7 +201,6 @@ export function mergeJsonProducts(
       bottom_line: String(row.bottom_line ?? htmlProduct?.bottom_line ?? ''),
       image_url: String(row.image_url ?? htmlProduct?.image_url ?? ''),
       price_range: String(row.price_range ?? htmlProduct?.price_range ?? ''),
-      affiliate_url: String(row.affiliate_url ?? htmlProduct?.affiliate_url ?? ''),
     } satisfies ArticleProductSpec
   })
 

@@ -1,7 +1,14 @@
 import { marked } from 'marked'
+import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
 import type { HydratedProduct, HydratedArticleSpec, PipelineRenderResult } from './types'
 
 marked.setOptions({ gfm: true, breaks: true })
+
+function escapeAttr(s: string): string {
+  return normalizeAffiliateUrl(s)
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -32,7 +39,7 @@ function renderComparePhoto(product: HydratedProduct): string {
   return `
     <td class="col compare-img-cell">
       <div class="compare-award ${color}">${escapeHtml(product.award_label || '')}</div>
-      <a href="${escapeHtml(product.affiliate_url)}" target="_blank" rel="nofollow sponsored noopener">
+      <a href="${escapeAttr(product.affiliate_url)}" target="_blank" rel="nofollow sponsored noopener">
         ${img}
       </a>
     </td>`
@@ -83,7 +90,7 @@ export function renderCompareTable(products: HydratedProduct[]): string {
         .map(
           (p) => `
         <td class="col compare-cta-cell">
-          <a href="${escapeHtml(p.affiliate_url)}" class="compare-cta-btn" target="_blank" rel="nofollow sponsored noopener">Check Price →</a>
+          <a href="${escapeAttr(p.affiliate_url)}" class="compare-cta-btn" target="_blank" rel="nofollow sponsored noopener">Check Price →</a>
         </td>`,
         )
         .join('\n')}
@@ -173,7 +180,7 @@ export function renderProductReview(product: HydratedProduct, index: number): st
           <span class="price-label">Price at time of writing</span>
           <span class="price-value">${escapeHtml(product.price_range || 'See on Amazon')}</span>
         </div>
-        <a href="${escapeHtml(product.affiliate_url)}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
+        <a href="${escapeAttr(product.affiliate_url)}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
           <span class="btn-icon">→</span> Check ${escapeHtml(product.name || 'Price')} on Amazon
         </a>
       </div>

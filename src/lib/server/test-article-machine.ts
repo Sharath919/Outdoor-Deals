@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
+import { getBuiltInArticleMachinePrompt } from '@/config/defaultArticleMachinePrompts'
 
 export const maxDuration = 60
 
@@ -64,11 +65,16 @@ async function resolveArticleMachinePrompt(templateType: string): Promise<string
   const templatePrompt = await readConfigKey(templatePromptKey)
   if (templatePrompt.trim()) return templatePrompt
 
+  const builtIn = getBuiltInArticleMachinePrompt(templatePromptKey)
+  if (builtIn) return builtIn
+
   const defaultPrompt = await readConfigKey('article_machine_prompt_default')
   if (defaultPrompt.trim()) return defaultPrompt
 
   const legacyPrompt = await readConfigKey('article_machine_prompt')
-  return legacyPrompt
+  if (legacyPrompt.trim()) return legacyPrompt
+
+  return getBuiltInArticleMachinePrompt('article_machine_prompt_default')
 }
 
 async function readWpCredentials(): Promise<{

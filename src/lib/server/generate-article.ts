@@ -10,6 +10,9 @@ import {
 import { runAffiliatePipeline, linkProductsToArticle } from '@/lib/server/affiliate-pipeline'
 import { isAdminAccessToken, isCronSecretToken } from '@/lib/server/admin-auth'
 import { TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
+import { getBuiltInArticleMachinePrompt } from '@/config/defaultArticleMachinePrompts'
+import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
+import { marked } from 'marked'
 
 export const maxDuration = 180
 
@@ -82,8 +85,19 @@ async function resolveArticleMachinePrompt(
     }
   }
 
+  const builtInForTemplate = getBuiltInArticleMachinePrompt(templatePromptKey)
+  if (builtInForTemplate) {
+    return {
+      systemPrompt: builtInForTemplate,
+      promptKey: templatePromptKey,
+      usedTemplatePrompt: true,
+    }
+  }
+
   const systemPrompt =
-    config.article_machine_prompt_default?.trim() || config.article_machine_prompt?.trim() || ''
+    config.article_machine_prompt_default?.trim() ||
+    config.article_machine_prompt?.trim() ||
+    getBuiltInArticleMachinePrompt('article_machine_prompt_default')
 
   return {
     systemPrompt,
@@ -367,6 +381,28 @@ function extractHeroPrompt(claudeText: string, imageSection: string): string {
 }
 
 const WORDPRESS_IMAGE_MARKER = '--- IMAGE PROMPT ---'
+const ARTICLE_BODY_MARKER = /---\s*ARTICLE-BODY\s*---/i
+
+function extractArticleBodyMarkdown(claudeText: string): string {
+  const startMatch = claudeText.match(ARTICLE_BODY_MARKER)
+  if (!startMatch || startMatch.index === undefined) return ''
+  const afterStart = claudeText.slice(startMatch.index + startMatch[0].length)
+  const endMatch = afterStart.match(/---\s*(?:IMAGE\s+PROMPT|GEMINI\s+IMAGE)\s*---/i)
+  const endIdx = endMatch?.index ?? afterStart.length
+  return afterStart.slice(0, endIdx).trim()
+}
+
+function mergeEditorialMarkdown(claudeText: string, contentHtml: string): string {
+  const markdown = extractArticleBodyMarkdown(claudeText)
+  if (!markdown) return contentHtml
+  const editorialHtml = marked.parse(markdown) as string
+  if (!editorialHtml.trim()) return contentHtml
+  const lacksIntro = !contentHtml.trim() || !/<p\b/i.test(contentHtml.slice(0, 800))
+  if (lacksIntro) {
+    return `${editorialHtml.trim()}\n\n${contentHtml.trim()}`.trim()
+  }
+  return contentHtml
+}
 
 function findHtmlStartIndex(text: string): number {
   const match = text.match(/<(?:p|article|main|div|section|h[1-6]|ul|ol|table|blockquote)\b/i)
@@ -423,9 +459,10 @@ function parseClaudeOutput(claudeText: string): {
 } {
   const articleJson = parseClaudeArticleJson(claudeText)
   const wp = parseWordPressClaudeOutput(claudeText, articleJson)
+  const mergedHtml = mergeEditorialMarkdown(claudeText, wp.contentHtml)
   return {
     articleJson,
-    contentHtml: repairBrokenArticleHtml(wp.contentHtml),
+    contentHtml: repairBrokenArticleHtml(mergedHtml),
     heroPrompt: wp.heroPrompt,
   }
 }
@@ -697,6 +734,12 @@ export async function handlePost(request: Request): Promise<Response> {
       if (pipeline.render.contentHtml.trim()) {
         contentHtml = pipeline.render.contentHtml
         hydratedProducts = pipeline.spec.products
+        console.log('[generate-article] parsed spec:', {
+          introLen: pipeline.spec.intro?.length ?? 0,
+          buyersGuideLen: pipeline.spec.buyers_guide?.length ?? 0,
+          tailLen: pipeline.spec.tail_html?.length ?? 0,
+          productCount: pipeline.spec.products.length,
+        })
         if (pipeline.warnings.length) {
           console.warn('[generate-article] pipeline warnings:', pipeline.warnings.join('; '))
         }
@@ -768,6 +811,9 @@ export async function handlePost(request: Request): Promise<Response> {
       String(articleJson.slug || '').trim() || topicToSlug(cardName),
     )
 
+    const amazonConfig = await readAmazonAffiliateServerConfig()
+    const authorName = amazonConfig.authorName?.trim() || 'Outdoor Deals Team'
+
     const { data: article, error: insertError } = await supabase
       .from('articles')
       .insert({
@@ -782,7 +828,7 @@ export async function handlePost(request: Request): Promise<Response> {
         hero_image_url: finalHeroUrl || null,
         atmosphere_image_url: finalHeroUrl || null,
         status: 'published',
-        author_name: 'Article Machine',
+        author_name: authorName,
         published_at: new Date().toISOString(),
       })
       .select('id, slug')

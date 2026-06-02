@@ -1,7 +1,10 @@
 /** Editorial article spec — input to the affiliate pipeline. */
 
 export type ArticleProductSpec = {
-  asin: string
+  /** Resolved by PA-API — never trust Claude-supplied values */
+  asin?: string
+  /** PA-API SearchItems query — preferred over display name */
+  search_keywords?: string
   award_label?: string
   award_color?: 'gold' | 'versatile' | 'value' | string
   tagline?: string
