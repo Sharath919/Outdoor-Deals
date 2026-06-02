@@ -1,4 +1,4 @@
-/** Fallback when VITE_SITE_URL is unset. */
+/** Fallback when site URL env is unset. */
 const DEFAULT_SITE_URL = 'https://outdoordeals.com'
 
 function normalizeSiteOrigin(raw: string | undefined): string {
@@ -7,12 +7,19 @@ function normalizeSiteOrigin(raw: string | undefined): string {
 }
 
 function resolveSiteOrigin(): string {
+  if (typeof window !== 'undefined' && window.__OUTDOOR_DEALS_ENV__?.siteUrl) {
+    return normalizeSiteOrigin(window.__OUTDOOR_DEALS_ENV__.siteUrl)
+  }
   if (typeof process !== 'undefined' && process.env) {
     const fromNode =
       process.env.NEXT_PUBLIC_SITE_URL ?? process.env.VITE_SITE_URL
     if (fromNode) return normalizeSiteOrigin(fromNode)
   }
   return DEFAULT_SITE_URL
+}
+
+export function getSiteUrl(): string {
+  return resolveSiteOrigin()
 }
 
 export const SITE_URL = resolveSiteOrigin()

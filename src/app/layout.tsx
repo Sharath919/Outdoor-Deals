@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/Providers'
+import { publicEnvScript, readPublicEnvFromProcess } from '@/lib/publicEnv'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -12,9 +13,14 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const publicEnv = readPublicEnvFromProcess()
+
   return (
     <html lang="en">
       <body>
+        <script
+          dangerouslySetInnerHTML={{ __html: publicEnvScript(publicEnv) }}
+        />
         <Providers>
           {children}
           <Toaster position="bottom-center" />
