@@ -1,8 +1,11 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]+>/g, '').trim()
-}
+import {
+  extractAmazonLink,
+  filterProductSpecs,
+  isProductHeading,
+  parseProductHeading,
+  stripHtml,
+} from './product-parse-utils'
 
 function parseSpecList(ulHtml: string): {
   specs: Record<string, string>
@@ -36,41 +39,17 @@ function parseSpecList(ulHtml: string): {
   return { specs, pros, cons, price_range }
 }
 
-function extractAsinFromHref(href: string): string | null {
-  const dp = href.match(/\/dp\/([A-Z0-9]{10})/i)
-  if (dp) return dp[1].toUpperCase()
-  const gp = href.match(/\/gp\/product\/([A-Z0-9]{10})/i)
-  if (gp) return gp[1].toUpperCase()
-  return null
-}
-
-function parseProductHeading(raw: string): { name: string; tagline: string } {
-  const text = stripHtml(raw)
-  const parts = text.split(/\s*[—–-]\s*/)
-  if (parts.length >= 2) {
-    return { name: parts[0].trim(), tagline: parts.slice(1).join(' — ').trim() }
-  }
-  return { name: text, tagline: '' }
-}
-
-function isProductHeading(text: string): boolean {
-  if (!/—|–|-/.test(text)) return false
-  if (/worth it\?|difference between|how long|reddit|lumens|faq/i.test(text)) return false
-  return true
-}
-
 function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProductSpec {
   const { name, tagline } = parseProductHeading(headingRaw)
   const ulMatch = sectionHtml.match(/<ul\b[\s\S]*?<\/ul>/i)
   const { specs, pros, cons, price_range } = parseSpecList(ulMatch?.[0] ?? '')
 
-  const affiliateMatch = sectionHtml.match(/<a\b[^>]*href="([^"]*)"[^>]*class="affiliate-link"[^>]*>/i)
-    ?? sectionHtml.match(/<a\b[^>]*class="affiliate-link"[^>]*href="([^"]*)"[^>]*>/i)
-  const asin = affiliateMatch ? extractAsinFromHref(affiliateMatch[1]) : null
+  const amazonLink = extractAmazonLink(sectionHtml)
+  const asin = amazonLink?.asin ?? ''
 
   let body = sectionHtml
     .replace(/<ul\b[\s\S]*?<\/ul>/i, '')
-    .replace(/<a\b[^>]*class="affiliate-link"[^>]*>[\s\S]*?<\/a>/i, '')
+    .replace(/<a\b[^>]*class="[^"]*(?:affiliate-link|btn)[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '')
     .replace(/<p\b[^>]*>([\s\S]*?)<\/p>/gi, (_, inner) => {
       const text = stripHtml(inner)
       if (/limitation|downside|tradeoff|catch|honest/i.test(text)) return ''
@@ -90,7 +69,7 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
   }
 
   return {
-    asin: asin ?? '',
+    asin,
     name,
     tagline,
     award_label: tagline,
@@ -100,8 +79,28 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
     body: body.replace(/<\/?p[^>]*>/gi, '\n\n').trim(),
     bottom_line,
     price_range,
-    affiliate_url: affiliateMatch?.[1],
+    affiliate_url: amazonLink?.href,
   }
+}
+
+type HeadingMatch = { index: number; length: number; heading: string; level: 'h2' | 'h3' }
+
+function collectProductHeadings(html: string): HeadingMatch[] {
+  const matches: HeadingMatch[] = []
+  const re = /<(h2|h3)\b[^>]*>([\s\S]*?)<\/\1>/gi
+  let match: RegExpExecArray | null
+  while ((match = re.exec(html)) !== null) {
+    const heading = match[2]
+    if (isProductHeading(stripHtml(heading))) {
+      matches.push({
+        index: match.index,
+        length: match[0].length,
+        heading,
+        level: match[1].toLowerCase() as 'h2' | 'h3',
+      })
+    }
+  }
+  return matches.sort((a, b) => a.index - b.index)
 }
 
 export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> = {}): ArticleSpec {
@@ -122,25 +121,19 @@ export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> 
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-  const h3Matches: Array<{ index: number; length: number; heading: string }> = []
-  const h3Re = /<h3\b[^>]*>([\s\S]*?)<\/h3>/gi
-  let h3Match: RegExpExecArray | null
-  while ((h3Match = h3Re.exec(afterIntro)) !== null) {
-    const heading = h3Match[1]
-    if (isProductHeading(stripHtml(heading))) {
-      h3Matches.push({ index: h3Match.index, length: h3Match[0].length, heading })
-    }
-  }
+  const headingMatches = collectProductHeadings(afterIntro)
 
   let buyers_guide = ''
   let tail_html = ''
   const products: ArticleProductSpec[] = []
 
-  if (h3Matches.length === 0) {
+  if (headingMatches.length === 0) {
     tail_html = afterIntro
   } else {
-    const buyersEnd = h3Matches[0].index
-    buyers_guide = afterIntro.slice(0, buyersEnd).replace(/^<h2[^>]*>/i, '## ').replace(/<\/h2>/i, '\n\n')
+    const buyersEnd = headingMatches[0].index
+    buyers_guide = afterIntro.slice(0, buyersEnd)
+      .replace(/^<h2[^>]*>/i, '## ')
+      .replace(/<\/h2>/i, '\n\n')
     buyers_guide = buyers_guide
       .replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, '\n\n## $1\n\n')
       .replace(/<\/?p[^>]*>/gi, '\n\n')
@@ -148,18 +141,20 @@ export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> 
       .replace(/\n{3,}/g, '\n\n')
       .trim()
 
-    h3Matches.forEach((h3, i) => {
-      const sectionStart = h3.index + h3.length
-      const nextStart = h3Matches[i + 1]?.index ?? afterIntro.length
+    headingMatches.forEach((h, i) => {
+      const sectionStart = h.index + h.length
+      const nextStart = headingMatches[i + 1]?.index ?? afterIntro.length
       const sectionHtml = afterIntro.slice(sectionStart, nextStart)
-      products.push(parseProductBlock(sectionHtml, h3.heading))
+      products.push(parseProductBlock(sectionHtml, h.heading))
     })
 
-    const lastProductEnd = h3Matches[h3Matches.length - 1].index + h3Matches[h3Matches.length - 1].length
-    const afterLastH3 = afterIntro.slice(lastProductEnd)
-    const nextH2 = afterLastH3.search(/<h2\b/i)
+    const lastProductEnd =
+      headingMatches[headingMatches.length - 1].index +
+      headingMatches[headingMatches.length - 1].length
+    const afterLastProduct = afterIntro.slice(lastProductEnd)
+    const nextH2 = afterLastProduct.search(/<h2\b/i)
     if (nextH2 !== -1) {
-      tail_html = afterLastH3.slice(nextH2)
+      tail_html = afterLastProduct.slice(nextH2)
     }
   }
 
@@ -167,7 +162,7 @@ export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> 
     ...meta,
     intro: meta.intro ?? intro,
     buyers_guide: meta.buyers_guide ?? buyers_guide,
-    products: meta.products?.length ? meta.products : products,
+    products: meta.products?.length ? meta.products : filterProductSpecs(products),
     tail_html: meta.tail_html ?? tail_html,
   }
 }
@@ -177,7 +172,9 @@ export function mergeJsonProducts(
   articleJson: Record<string, unknown>,
 ): ArticleSpec {
   const jsonProducts = articleJson.products
-  if (!Array.isArray(jsonProducts) || jsonProducts.length === 0) return htmlSpec
+  if (!Array.isArray(jsonProducts) || jsonProducts.length === 0) {
+    return { ...htmlSpec, products: filterProductSpecs(htmlSpec.products) }
+  }
 
   const parsedByName = new Map(
     htmlSpec.products.map((p) => [p.name?.toLowerCase() ?? '', p]),
@@ -193,7 +190,11 @@ export function mergeJsonProducts(
       asin: asin || htmlProduct?.asin || '',
       name: name || htmlProduct?.name,
       award_label: String(row.award_label ?? htmlProduct?.award_label ?? ''),
-      award_color: String(row.award_color ?? htmlProduct?.award_color ?? (index === 0 ? 'gold' : index === 1 ? 'versatile' : 'value')),
+      award_color: String(
+        row.award_color ??
+          htmlProduct?.award_color ??
+          (index === 0 ? 'gold' : index === 1 ? 'versatile' : 'value'),
+      ),
       tagline: String(row.tagline ?? htmlProduct?.tagline ?? ''),
       best_for: String(row.best_for ?? htmlProduct?.best_for ?? ''),
       specs: (row.specs as Record<string, string>) ?? htmlProduct?.specs ?? {},
@@ -207,7 +208,7 @@ export function mergeJsonProducts(
     } satisfies ArticleProductSpec
   })
 
-  return { ...htmlSpec, products: merged }
+  return { ...htmlSpec, products: filterProductSpecs(merged) }
 }
 
 export function buildSpecFromClaudeOutput(
@@ -224,3 +225,5 @@ export function buildSpecFromClaudeOutput(
   const htmlSpec = parseHtmlToArticleSpec(contentHtml, meta)
   return mergeJsonProducts(htmlSpec, articleJson)
 }
+
+export { filterProductSpecs, isValidProductSpec } from './product-parse-utils'

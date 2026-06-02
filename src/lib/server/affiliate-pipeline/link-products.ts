@@ -18,10 +18,13 @@ export async function linkProductsToArticle(
 
   for (let rank = 0; rank < products.length; rank++) {
     const product = products[rank]
-    if (!product.affiliate_url?.trim()) continue
+    const affiliateUrl = product.affiliate_url?.trim()
+    if (!affiliateUrl || affiliateUrl === 'https://www.amazon.com/dp/') continue
 
-    const title = product.name?.trim() || `Product ${product.asin}`
     const asin = product.asin?.trim() || null
+    if (asin && !/^[A-Z0-9]{10}$/i.test(asin)) continue
+
+    const title = product.name?.trim() || `Product ${asin ?? 'unknown'}`
 
     let productId: string | null = null
 
@@ -39,7 +42,7 @@ export async function linkProductsToArticle(
           .update({
             title,
             image_url: product.image_url,
-            affiliate_url: product.affiliate_url,
+            affiliate_url: affiliateUrl,
             category: category ?? undefined,
             last_price_cents: parsePriceCents(product.price_range),
             last_checked_at: new Date().toISOString(),
@@ -56,7 +59,7 @@ export async function linkProductsToArticle(
           asin,
           title,
           image_url: product.image_url,
-          affiliate_url: product.affiliate_url,
+          affiliate_url: affiliateUrl,
           category,
           last_price_cents: parsePriceCents(product.price_range),
           last_checked_at: new Date().toISOString(),

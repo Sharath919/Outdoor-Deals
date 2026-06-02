@@ -93,9 +93,21 @@ export function isPaapiConfigured(config: AmazonAffiliateConfig): boolean {
 }
 
 export function buildAffiliateProductUrl(asin: string, associateTag: string): string {
+  const id = asin.trim()
   const tag = associateTag.trim()
-  if (!tag) return `https://www.amazon.com/dp/${asin}`
-  return `https://www.amazon.com/dp/${asin}?tag=${tag}&linkCode=ogi&th=1&psc=1`
+  if (!/^[A-Z0-9]{10}$/i.test(id)) {
+    return ''
+  }
+  if (!tag) return `https://www.amazon.com/dp/${id}`
+  return `https://www.amazon.com/dp/${id}?tag=${tag}&linkCode=ogi&th=1&psc=1`
+}
+
+export function buildAmazonSearchUrl(query: string, associateTag: string): string {
+  const q = query.trim()
+  if (!q) return 'https://www.amazon.com'
+  const tag = associateTag.trim()
+  const base = `https://www.amazon.com/s?k=${encodeURIComponent(q)}`
+  return tag ? `${base}&tag=${tag}` : base
 }
 
 export { AMAZON_CONFIG_KEYS }

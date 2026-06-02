@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { buildAffiliateProductUrl } from '@/utils/amazonAffiliateConfig'
+import { buildAffiliateProductUrl, buildAmazonSearchUrl } from '@/utils/amazonAffiliateConfig'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import type { AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
 import type { ArticleProductSpec, HydratedProduct } from './types'
@@ -103,13 +103,16 @@ function shapePaapiProduct(
 }
 
 function shapeManualProduct(product: ArticleProductSpec, associateTag: string): HydratedProduct {
-  const asin = product.asin.trim()
+  const asin = product.asin?.trim() ?? ''
+  const searchUrl = buildAmazonSearchUrl(product.name ?? '', associateTag)
+  const affiliateFromAsin = asin ? buildAffiliateProductUrl(asin, associateTag) : ''
   return {
     ...product,
     asin,
     affiliate_url:
       product.affiliate_url?.trim() ||
-      buildAffiliateProductUrl(asin, associateTag),
+      affiliateFromAsin ||
+      searchUrl,
     image_url: product.image_url ?? null,
     image_alt: product.image_alt ?? product.name ?? `Product ${asin}`,
     name: product.name?.trim() ?? '',

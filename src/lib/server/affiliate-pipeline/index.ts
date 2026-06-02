@@ -17,7 +17,15 @@ export async function runAffiliatePipeline(
     input.spec ??
     buildSpecFromClaudeOutput(input.contentHtml, input.articleJson ?? {})
 
-  const { products, warnings } = await hydrateProducts(supabase, spec.products)
+  const warnings: string[] = []
+  if (spec.products.length === 0) {
+    warnings.push(
+      'No products with Amazon ASINs found — add /dp/ASIN links or a products JSON array with asin fields',
+    )
+  }
+
+  const { products, warnings: hydrateWarnings } = await hydrateProducts(supabase, spec.products)
+  warnings.push(...hydrateWarnings)
 
   const hydrated: HydratedArticleSpec = {
     ...spec,

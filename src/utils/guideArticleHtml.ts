@@ -26,7 +26,7 @@ function slugify(text: string): string {
 
 function parseProductHeading(raw: string): { name: string; tagline: string } {
   const text = stripHtml(raw)
-  const parts = text.split(/\s*[—–-]\s*/)
+  const parts = text.split(/\s*[—–]\s*/)
   if (parts.length >= 2) {
     return { name: parts[0].trim(), tagline: parts.slice(1).join(' — ').trim() }
   }
