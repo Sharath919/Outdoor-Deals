@@ -1,0 +1,66 @@
+/**
+ * Server-only Amazon affiliate config reader.
+ * Env vars win over ai_config (for Vercel overrides).
+ */
+
+import { createServerSupabase } from '@/lib/supabase'
+import {
+  buildAmazonAffiliateConfigFromRows,
+  isPaapiConfigured,
+} from '@/utils/amazonAffiliateConfig'
+import { AMAZON_CONFIG_KEYS, type AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
+
+function envOr(stored: string, envKey: string): string {
+  const fromEnv = process.env[envKey]?.trim()
+  if (fromEnv) return fromEnv
+  return stored
+}
+
+export async function readAmazonAffiliateServerConfig(): Promise<AmazonAffiliateServerConfig> {
+  const supabase = createServerSupabase()
+  let rows: { key: string; value: unknown }[] = []
+
+  if (supabase) {
+    const { data } = await supabase
+      .from('ai_config')
+      .select('key, value')
+      .in('key', [...AMAZON_CONFIG_KEYS])
+    rows = data ?? []
+  }
+
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]))
+  const publicConfig = buildAmazonAffiliateConfigFromRows(rows)
+
+  const accessKey = envOr(configValue(map.amazon_paapi_access_key), 'PAAPI_ACCESS_KEY')
+  const secretKey = envOr(configValue(map.amazon_paapi_secret_key), 'PAAPI_SECRET_KEY')
+
+  return {
+    associateTag: envOr(publicConfig.associateTag, 'ASSOCIATE_TAG'),
+    marketplace: envOr(publicConfig.marketplace, 'MARKETPLACE') || 'www.amazon.com',
+    siteName: envOr(publicConfig.siteName, 'SITE_NAME'),
+    siteUrl: envOr(publicConfig.siteUrl, 'SITE_URL'),
+    accentColor: envOr(publicConfig.accentColor, 'ACCENT_COLOR'),
+    authorName: envOr(publicConfig.authorName, 'AUTHOR_NAME'),
+    authorInitials: envOr(publicConfig.authorInitials, 'AUTHOR_INITIALS'),
+    disclosureText: publicConfig.disclosureText,
+    paapiAccessKey: accessKey,
+    paapiSecretKey: secretKey,
+  }
+}
+
+function configValue(raw: unknown): string {
+  if (raw == null) return ''
+  if (typeof raw === 'string') return raw
+  return String(raw)
+}
+
+export async function isAmazonPaapiAvailable(): Promise<boolean> {
+  const config = await readAmazonAffiliateServerConfig()
+  return Boolean(
+    config.paapiAccessKey &&
+      config.paapiSecretKey &&
+      config.associateTag,
+  )
+}
+
+export { isPaapiConfigured }

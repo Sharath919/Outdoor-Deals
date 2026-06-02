@@ -1,0 +1,1140 @@
+/**
+ * Outdoor editorial affiliate template — design tokens + layout components.
+ * Scoped to .guide-page for public guide/article pages.
+ */
+
+.guide-page {
+  --bg: #faf8f3;
+  --bg-card: #ffffff;
+  --bg-subtle: #f1ede3;
+  --ink: #1a1f1a;
+  --ink-soft: #4a524a;
+  --ink-mute: #7a8278;
+  --line: #e5e1d6;
+  --line-strong: #d4cfc0;
+  --accent: #2d4a2b;
+  --accent-soft: #e8efe6;
+  --cta: #c2410c;
+  --cta-hover: #9a3309;
+  --pro: #2d7a3e;
+  --con: #b33a2b;
+  --gold: #b89968;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Manrope', -apple-system, system-ui, sans-serif;
+  --container: 720px;
+  --container-wide: 1100px;
+
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.guide-page img {
+  max-width: 100%;
+  display: block;
+}
+
+.guide-page a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.guide-page a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ── Top nav ── */
+.guide-page .topnav {
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  background: rgba(250, 248, 243, 0.85);
+}
+
+.guide-page .topnav-inner {
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.guide-page .logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.guide-page .logo span {
+  color: var(--accent);
+}
+
+.guide-page .nav-links {
+  display: flex;
+  gap: 28px;
+}
+
+.guide-page .nav-links a {
+  text-decoration: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.guide-page .nav-links a:hover {
+  color: var(--accent);
+}
+
+/* ── Breadcrumb ── */
+.guide-page .breadcrumb {
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: 20px 24px 0;
+  font-size: 13px;
+  color: var(--ink-mute);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.guide-page .breadcrumb a {
+  color: var(--ink-mute);
+  text-decoration: none;
+}
+
+.guide-page .breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.guide-page .breadcrumb span {
+  margin: 0 8px;
+  opacity: 0.5;
+}
+
+/* ── Article header ── */
+.guide-page .article-header {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 40px 24px 32px;
+}
+
+.guide-page .eyebrow {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  margin-bottom: 24px;
+}
+
+.guide-page h1.article-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(36px, 5.5vw, 56px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 20px;
+  font-variation-settings: 'opsz' 144, 'SOFT' 50;
+}
+
+.guide-page .deck {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  margin-bottom: 32px;
+  max-width: 620px;
+}
+
+.guide-page .byline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.guide-page .avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #4a6b48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-family: var(--font-display);
+  flex-shrink: 0;
+}
+
+.guide-page .byline-text strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.guide-page .byline-meta {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.guide-page .byline-meta span {
+  margin: 0 6px;
+}
+
+/* ── Hero image ── */
+.guide-page .hero-image {
+  max-width: var(--container-wide);
+  margin: 0 auto 40px;
+  padding: 0 24px;
+}
+
+.guide-page .hero-image-inner {
+  aspect-ratio: 16 / 9;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.guide-page .hero-image-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.guide-page .hero-caption {
+  max-width: var(--container);
+  margin: 12px auto 0;
+  font-size: 13px;
+  color: var(--ink-mute);
+  font-style: italic;
+}
+
+/* ── Article body ── */
+.guide-page .article-body {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+.guide-page .disclosure {
+  background: var(--bg-subtle);
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px;
+  margin-bottom: 40px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  border-radius: 0 4px 4px 0;
+}
+
+.guide-page .disclosure strong {
+  color: var(--ink);
+}
+
+/* ── Article content (injected HTML) ── */
+.guide-page .article-content .lead {
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin-bottom: 24px;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 144;
+}
+
+.guide-page .article-content .lead::first-letter {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 64px;
+  float: left;
+  line-height: 0.85;
+  padding: 8px 12px 0 0;
+  color: var(--accent);
+}
+
+.guide-page .article-content p {
+  margin-bottom: 22px;
+  color: var(--ink);
+}
+
+.guide-page .article-content h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 56px 0 20px;
+  color: var(--ink);
+  border: none;
+  padding: 0;
+}
+
+.guide-page .article-content h2::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: var(--accent);
+  margin-bottom: 16px;
+}
+
+.guide-page .article-content h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.guide-page .article-content ul,
+.guide-page .article-content ol {
+  margin-bottom: 22px;
+  padding-left: 1.5rem;
+  color: var(--ink);
+}
+
+.guide-page .article-content li {
+  margin-bottom: 0.375rem;
+}
+
+.guide-page .article-content strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── Quick picks ── */
+.guide-page .quick-picks {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 32px;
+  margin: 40px 0;
+  box-shadow: 0 2px 8px rgba(26, 31, 26, 0.04);
+}
+
+.guide-page .quick-picks-header {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+
+.guide-page .quick-picks-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+}
+
+.guide-page .picks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.guide-page .pick-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-page .pick-image {
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, #2a2a2a, #4a4a4a);
+  border-radius: 4px;
+  margin-bottom: 14px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.guide-page .pick-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.guide-page .pick-card .award-pill {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--gold);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.guide-page .pick-label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.guide-page .pick-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.guide-page .pick-card .btn {
+  margin-top: auto;
+}
+
+/* ── CTA buttons ── */
+.guide-page .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--cta);
+  color: white !important;
+  text-decoration: none !important;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  padding: 14px 22px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  width: 100%;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.guide-page .btn:hover {
+  background: var(--cta-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.25);
+}
+
+.guide-page .btn-icon {
+  font-size: 16px;
+}
+
+.guide-page .btn-large {
+  padding: 18px 28px;
+  font-size: 16px;
+}
+
+/* ── Comparison table ── */
+.guide-page .comparison-wrap {
+  margin: 40px 0;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.guide-page table.comparison {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.guide-page table.comparison thead {
+  background: var(--ink);
+  color: white;
+}
+
+.guide-page table.comparison th {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+  color: white;
+  border: none;
+}
+
+.guide-page table.comparison td {
+  padding: 14px 16px;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  color: var(--ink);
+}
+
+.guide-page table.comparison tbody tr:nth-child(even) {
+  background: var(--bg-subtle);
+}
+
+.guide-page table.comparison .product-cell {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.guide-page table.comparison .award-mini {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Product review card ── */
+.guide-page .product-review {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 48px 0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(26, 31, 26, 0.04);
+}
+
+.guide-page .product-review-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.guide-page .product-image {
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #1a1f1a, #3a4538);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Pipeline render uses product-image-wrap — same layout as product-image */
+.guide-page .product-image-wrap {
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #1a1f1a, #3a4538);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.guide-page .product-image-wrap img,
+.guide-page .product-image-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.guide-page .product-image-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+}
+
+.guide-page .product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.guide-page .product-image .award-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.guide-page .product-image .award-badge.gold {
+  background: var(--gold);
+}
+
+.guide-page .product-image .award-badge.value {
+  background: #5a6b3f;
+}
+
+.guide-page .product-image-wrap .award-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.guide-page .product-image-wrap .award-badge.gold {
+  background: var(--gold);
+}
+
+.guide-page .product-image-wrap .award-badge.value {
+  background: #5a6b3f;
+}
+
+.guide-page .product-image-wrap .award-badge.versatile {
+  background: var(--ink-soft);
+}
+
+/* ── Column compare table (affiliate pipeline) ── */
+.guide-page .compare-section {
+  margin: 48px 0;
+}
+
+.guide-page .compare-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(26, 31, 26, 0.04);
+}
+
+.guide-page table.compare {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.guide-page table.compare th.row-label {
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  width: 120px;
+}
+
+.guide-page table.compare td.col {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  vertical-align: middle;
+  text-align: center;
+  color: var(--ink);
+}
+
+.guide-page table.compare tr:last-child td,
+.guide-page table.compare tr:last-child th.row-label {
+  border-bottom: none;
+}
+
+.guide-page table.compare .compare-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.guide-page table.compare td.spec {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.guide-page .compare-img-cell {
+  padding: 16px !important;
+}
+
+.guide-page .compare-img-cell a {
+  display: block;
+}
+
+.guide-page .compare-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.guide-page .compare-img-placeholder {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 11px;
+  color: var(--ink-mute);
+  background: var(--bg-subtle);
+  border-radius: 4px;
+  line-height: 1.3;
+}
+
+.guide-page .compare-award {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.guide-page .compare-award.gold {
+  color: var(--gold);
+}
+
+.guide-page .compare-award.value {
+  color: #5a6b3f;
+}
+
+.guide-page .compare-award.versatile {
+  color: var(--ink-soft);
+}
+
+.guide-page .compare-cta-btn {
+  display: inline-block;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: white !important;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none !important;
+  border-radius: 3px;
+  transition: background 0.15s ease;
+}
+
+.guide-page .compare-cta-btn:hover {
+  background: var(--accent-dark);
+}
+
+.guide-page .product-info {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.guide-page .product-name {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.guide-page .product-tagline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+
+.guide-page .spec-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+
+.guide-page .spec-item .spec-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-mute);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.guide-page .spec-item .spec-value {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.guide-page .proscons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.guide-page .proscons-col {
+  padding: 24px 32px;
+}
+
+.guide-page .proscons-col + .proscons-col {
+  border-left: 1px solid var(--line);
+}
+
+.guide-page .proscons h4 {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.guide-page .proscons h4.pros-h {
+  color: var(--pro);
+}
+
+.guide-page .proscons h4.cons-h {
+  color: var(--con);
+}
+
+.guide-page .proscons ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-page .proscons li {
+  padding-left: 26px;
+  margin-bottom: 10px;
+  position: relative;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.guide-page .proscons li::before {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: white;
+}
+
+.guide-page .proscons .pros li::before {
+  content: '✓';
+  background: var(--pro);
+}
+
+.guide-page .proscons .cons li::before {
+  content: '✕';
+  background: var(--con);
+}
+
+.guide-page .review-body {
+  padding: 32px;
+  border-top: 1px solid var(--line);
+}
+
+.guide-page .review-body p {
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.guide-page .bottom-line {
+  background: var(--bg-subtle);
+  padding: 20px 24px;
+  margin-top: 24px;
+  border-radius: 4px;
+  border-left: 3px solid var(--accent);
+}
+
+.guide-page .bottom-line-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.guide-page .bottom-line-text {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.guide-page .review-cta {
+  padding: 24px 32px 32px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-subtle);
+}
+
+.guide-page .price-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.guide-page .price-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-mute);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.guide-page .price-value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── Inline CTA ── */
+.guide-page .article-content .inline-cta {
+  background: var(--accent-soft);
+  border: 1px solid rgba(45, 74, 43, 0.2);
+  border-radius: 6px;
+  padding: 1.25rem 1.5rem;
+  margin: 2rem 0;
+  font-size: 16px;
+}
+
+.guide-page .article-content .inline-cta a {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ── FAQ ── */
+.guide-page .article-content .article-faq h3,
+.guide-page .article-content .article-faq h3.article-faq-q {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  box-shadow: 0 1px 2px rgba(26, 31, 26, 0.04);
+}
+
+.guide-page .article-content .article-faq h3 + p {
+  padding: 0 1.25rem 1rem;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.625;
+  margin-top: 0;
+}
+
+/* ── Author bio ── */
+.guide-page .author-bio {
+  margin: 80px 0 40px;
+  padding: 32px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.guide-page .author-bio .avatar {
+  width: 80px;
+  height: 80px;
+  font-size: 28px;
+}
+
+.guide-page .author-bio h3 {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.guide-page .author-bio h4 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.guide-page .author-bio p {
+  font-size: 15px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+/* ── Footer ── */
+.guide-page .guide-footer {
+  margin-top: 0;
+  padding: 48px 24px;
+  background: var(--ink);
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  font-size: 14px;
+}
+
+.guide-page .guide-footer .logo {
+  color: white;
+}
+
+.guide-page .guide-footer .logo span {
+  color: #8fb28c;
+}
+
+.guide-page .guide-footer p {
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.guide-page .guide-footer a {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Hide legacy limansa elements */
+.guide-page .article-h2-divider,
+.guide-page .article-section-break,
+.guide-page .affiliate-cta:empty {
+  display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .guide-page {
+    font-size: 17px;
+  }
+
+  .guide-page .picks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-page .product-review-header {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-page .product-image {
+    aspect-ratio: 16 / 10;
+  }
+
+  .guide-page .product-image-wrap {
+    aspect-ratio: 16 / 10;
+  }
+
+  .guide-page table.compare {
+    min-width: 520px;
+  }
+
+  .guide-page .proscons {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-page .proscons-col + .proscons-col {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .guide-page .nav-links {
+    gap: 16px;
+  }
+
+  .guide-page .nav-links a {
+    font-size: 12px;
+  }
+
+  .guide-page .article-content .lead::first-letter {
+    font-size: 48px;
+  }
+
+  .guide-page h1.article-title {
+    font-size: 34px;
+  }
+
+  .guide-page .article-content h2 {
+    font-size: 28px;
+  }
+
+  .guide-page .author-bio {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .guide-page .author-bio .avatar {
+    margin: 0 auto;
+  }
+}
