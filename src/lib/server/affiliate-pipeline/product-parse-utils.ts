@@ -71,3 +71,23 @@ export function isValidProductSpec(product: ArticleProductSpec): boolean {
 export function filterProductSpecs(products: ArticleProductSpec[]): ArticleProductSpec[] {
   return products.filter(isValidProductSpec)
 }
+
+export function isPipelineRenderedSection(html: string): boolean {
+  return /\bproduct-review\b/.test(html)
+}
+
+/** Turn editorial HTML paragraphs into plain text for markdown re-render. */
+export function htmlParagraphsToText(html: string): string {
+  const paragraphs = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((m) => stripHtml(m[1]))
+    .filter(Boolean)
+  if (paragraphs.length > 0) return paragraphs.join('\n\n')
+  return stripHtml(html)
+}
+
+export function extractListItems(ulHtml: string | undefined): string[] {
+  if (!ulHtml) return []
+  return [...ulHtml.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)]
+    .map((m) => stripHtml(m[1]))
+    .filter(Boolean)
+}

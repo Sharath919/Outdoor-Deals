@@ -1,6 +1,9 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
 import {
+  extractListItems,
   filterProductSpecs,
+  htmlParagraphsToText,
+  isPipelineRenderedSection,
   isProductHeading,
   parseProductHeading,
   stripHtml,
@@ -38,7 +41,74 @@ function parseSpecList(ulHtml: string): {
   return { specs, pros, cons, price_range }
 }
 
+function extractDivClassContent(html: string, className: string, untilClass?: string): string {
+  const startRe = new RegExp(`<div class="${className}"[^>]*>`, 'i')
+  const startMatch = html.match(startRe)
+  if (!startMatch || startMatch.index === undefined) return ''
+  const afterStart = html.slice(startMatch.index + startMatch[0].length)
+  if (untilClass) {
+    const endRe = new RegExp(`<div class="${untilClass}"[^>]*>`, 'i')
+    const endMatch = afterStart.match(endRe)
+    const endIdx = endMatch?.index ?? afterStart.length
+    return afterStart.slice(0, endIdx).trim()
+  }
+  const closeIdx = afterStart.indexOf('</div>')
+  return closeIdx === -1 ? afterStart.trim() : afterStart.slice(0, closeIdx).trim()
+}
+
+function parsePipelineProductBlock(sectionHtml: string, headingRaw: string): ArticleProductSpec {
+  const { name, tagline } = parseProductHeading(headingRaw)
+
+  const specs: Record<string, string> = {}
+  const specRe = /<div class="spec-item">\s*<span class="spec-label">([^<]*)<\/span>\s*<span class="spec-value">([^<]*)<\/span>\s*<\/div>/gi
+  let specMatch: RegExpExecArray | null
+  while ((specMatch = specRe.exec(sectionHtml)) !== null) {
+    const label = specMatch[1].trim().toLowerCase()
+    const value = specMatch[2].trim()
+    if (label === 'price') continue
+    specs[label.replace(/\s+/g, '_')] = value
+  }
+
+  const pros = extractListItems(sectionHtml.match(/<ul class="pros">([\s\S]*?)<\/ul>/i)?.[1])
+  const cons = extractListItems(sectionHtml.match(/<ul class="cons">([\s\S]*?)<\/ul>/i)?.[1])
+  const price_range =
+    sectionHtml.match(/<span class="price-value">([^<]*)<\/span>/i)?.[1]?.trim()
+
+  let bodyRaw = extractDivClassContent(sectionHtml, 'review-body', 'review-cta')
+  bodyRaw = bodyRaw
+    .replace(/<div class="bottom-line">[\s\S]*$/i, '')
+    .replace(/<div class="product-review">[\s\S]*$/i, '')
+    .trim()
+  const body = htmlParagraphsToText(bodyRaw)
+
+  const bottom_line =
+    sectionHtml.match(/<div class="bottom-line-text">([\s\S]*?)<\/div>/i)?.[1]?.trim() ??
+    undefined
+
+  const awardColorMatch = sectionHtml.match(/<span class="award-badge\s+([^"]*)"/i)?.[1]?.trim()
+  const award_color =
+    awardColorMatch && /gold|versatile|value/.test(awardColorMatch) ? awardColorMatch : undefined
+
+  return {
+    search_keywords: name,
+    name,
+    tagline,
+    award_label: tagline,
+    award_color,
+    specs,
+    pros,
+    cons,
+    body,
+    bottom_line: bottom_line ? stripHtml(bottom_line) : undefined,
+    price_range,
+  }
+}
+
 function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProductSpec {
+  if (isPipelineRenderedSection(sectionHtml)) {
+    return parsePipelineProductBlock(sectionHtml, headingRaw)
+  }
+
   const { name, tagline } = parseProductHeading(headingRaw)
   const ulMatch = sectionHtml.match(/<ul\b[\s\S]*?<\/ul>/i)
   const { specs, pros, cons, price_range } = parseSpecList(ulMatch?.[0] ?? '')

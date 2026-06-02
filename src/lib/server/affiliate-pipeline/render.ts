@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
+import { htmlParagraphsToText } from './product-parse-utils'
 import type { HydratedProduct, HydratedArticleSpec, PipelineRenderResult } from './types'
 
 marked.setOptions({ gfm: true, breaks: true })
@@ -21,6 +22,15 @@ function escapeHtml(s: string): string {
 function renderMarkdown(md: string): string {
   if (!md.trim()) return ''
   return marked.parse(md.trim()) as string
+}
+
+function renderBodyContent(body: string): string {
+  const trimmed = body.trim()
+  if (!trimmed) return ''
+  if (/<\/?(?:div|span|ul|ol|table|h[1-6])\b/i.test(trimmed)) {
+    return renderMarkdown(htmlParagraphsToText(trimmed))
+  }
+  return renderMarkdown(trimmed)
 }
 
 function awardClass(color?: string): string {
@@ -130,7 +140,7 @@ export function renderProductReview(product: HydratedProduct, index: number): st
 
   const prosHtml = (product.pros ?? []).map((p) => `<li>${escapeHtml(p)}</li>`).join('')
   const consHtml = (product.cons ?? []).map((c) => `<li>${escapeHtml(c)}</li>`).join('')
-  const bodyHtml = product.body ? renderMarkdown(product.body) : ''
+  const bodyHtml = product.body ? renderBodyContent(product.body) : ''
 
   return `
     <h2 id="product-${index + 1}">${escapeHtml(product.name)} — ${escapeHtml(product.tagline || product.best_for || '')}</h2>
