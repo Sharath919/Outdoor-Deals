@@ -350,13 +350,16 @@ export default function AdminArticleList() {
 
   const handleHydrateProducts = async (article: Article) => {
     setActionLoading(article.id)
+    const toastId = toast.loading('Hydrating products from Amazon…')
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 120_000)
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession()
       const token = session?.access_token
       if (!token) {
-        toast.error('Not signed in')
+        toast.error('Not signed in — refresh and log in again', { id: toastId })
         return
       }
       const res = await fetch('/api/admin/hydrate-article', {
@@ -366,21 +369,28 @@ export default function AdminArticleList() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ article_id: article.id }),
+        signal: controller.signal,
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data.error || 'Hydration failed')
+        toast.error(data.error || `Hydration failed (${res.status})`, { id: toastId })
         return
       }
       toast.success(
         `Linked ${data.products_linked ?? 0} products${data.warnings?.length ? ` (${data.warnings.length} warnings)` : ''}`,
+        { id: toastId },
       )
       if (data.warnings?.length) {
         console.warn('[hydrate-article]', data.warnings)
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Hydration failed')
+      if (err instanceof Error && err.name === 'AbortError') {
+        toast.error('Hydration timed out after 2 minutes — check Railway logs', { id: toastId })
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Hydration failed', { id: toastId })
+      }
     } finally {
+      window.clearTimeout(timeout)
       setActionLoading(null)
     }
   }
@@ -797,7 +807,7 @@ export default function AdminArticleList() {
                       className="text-amber-400/80 hover:text-amber-300 text-xs px-3 py-1.5 border border-amber-400/20 rounded-lg transition-colors disabled:opacity-30"
                       title="Fetch Amazon product data and link products"
                     >
-                      Hydrate
+                      {actionLoading === article.id ? 'Hydrating…' : 'Hydrate'}
                     </button>
                   )}
                   {article.status === 'published' && (

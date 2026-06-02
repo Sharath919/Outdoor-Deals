@@ -8,6 +8,7 @@ import {
   repairBrokenArticleHtml,
 } from '@/lib/article-content'
 import { runAffiliatePipeline, linkProductsToArticle } from '@/lib/server/affiliate-pipeline'
+import { isAdminAccessToken, isCronSecretToken } from '@/lib/server/admin-auth'
 import { TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
 
 export const maxDuration = 180
@@ -107,11 +108,6 @@ function calculateClaudeCost(model: string, inputTokens: number, outputTokens: n
   )
 }
 
-const BOOTSTRAP_ADMIN_EMAILS = [
-  'sharathchand19141@gmail.com',
-  'sharathbroyt@gmail.com',
-]
-
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -130,7 +126,6 @@ function getServerSupabase() {
     .replace(/\/$/, '')
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
   if (!url || !serviceKey) return null
-  // Server-only function; keep types relaxed to avoid Supabase generic inference issues in Vercel builds.
   return createClient(url, serviceKey) as any
 }
 
@@ -140,21 +135,12 @@ function extractBearerToken(request: Request): string {
 }
 
 async function isAdminUser(supabase: any, accessToken: string): Promise<boolean> {
-  const { data: userData, error } = await supabase.auth.getUser(accessToken)
-  if (error || !userData.user) return false
-  const email = userData.user.email?.toLowerCase().trim()
-  if (email && BOOTSTRAP_ADMIN_EMAILS.includes(email)) return true
-  const { data } = await supabase
-    .from('admin_users')
-    .select('id')
-    .eq('id', userData.user.id)
-    .maybeSingle()
-  return !!data
+  return isAdminAccessToken(supabase, accessToken)
 }
 
 async function canRunPipeline(supabase: any, token: string): Promise<boolean> {
   if (!token) return false
-  if (process.env.CRON_SECRET && token === process.env.CRON_SECRET) return true
+  if (isCronSecretToken(token)) return true
   return isAdminUser(supabase, token)
 }
 

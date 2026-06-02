@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { applyPipelineToArticle } from '@/lib/server/affiliate-pipeline'
+import { isAdminAccessToken } from '@/lib/server/admin-auth'
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -24,14 +25,7 @@ function getServerSupabase() {
 }
 
 async function isAdminUser(supabase: ReturnType<typeof createClient>, token: string): Promise<boolean> {
-  const { data: userData, error } = await supabase.auth.getUser(token)
-  if (error || !userData.user) return false
-  const { data } = await supabase
-    .from('admin_users')
-    .select('id')
-    .eq('id', userData.user.id)
-    .maybeSingle()
-  return Boolean(data)
+  return isAdminAccessToken(supabase, token)
 }
 
 export async function handleHydrateArticle(request: Request): Promise<Response> {

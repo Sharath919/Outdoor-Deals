@@ -263,17 +263,24 @@ export default function Schedule() {
       .from('publishing_schedule')
       .update({ status: 'pending', error_text: null, updated_at: new Date().toISOString() })
       .eq('id', row.id)
-    if (error) toast.error(error.message)
-    else {
-      toast.success('Reset to pending')
-      await refresh()
+    if (error) {
+      toast.error(error.message)
+      return
     }
+    toast.success('Retrying generation…')
+    await refresh()
+    await generateNow({ ...row, status: 'pending', error_text: null })
   }
 
   async function generateNow(row: ScheduleRow) {
     setBusyId(row.id)
+    const toastId = toast.loading('Generating article (1–3 min)…')
     try {
       const token = await getAdminToken()
+      if (!token) {
+        toast.error('Not signed in — refresh and log in again', { id: toastId })
+        return
+      }
       const res = await fetch('/api/generate-article', {
         method: 'POST',
         headers: {
@@ -292,10 +299,10 @@ export default function Schedule() {
         wp_post_url?: string
       }
       if (!res.ok) throw new Error(data.error || `Failed (${res.status})`)
-      toast.success('Generated and published')
+      toast.success('Generated and published', { id: toastId })
       await refresh()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed')
+      toast.error(err instanceof Error ? err.message : 'Failed', { id: toastId })
       await refresh()
     } finally {
       setBusyId(null)
@@ -519,7 +526,16 @@ export default function Schedule() {
                 <td className="px-5 py-3 text-foreground/70">{r.scheduled_date}</td>
                 <td className="px-5 py-3 text-foreground/80">{r.card_name}</td>
                 <td className="px-5 py-3 text-foreground/60">{templateLabels(r.template_type)}</td>
-                <td className="px-5 py-3">{statusBadge(r)}</td>
+                <td className="px-5 py-3">
+                  <div className="space-y-1">
+                    {statusBadge(r)}
+                    {r.status === 'failed' && r.error_text && (
+                      <p className="text-xs text-red-300/80 max-w-xs leading-snug" title={r.error_text}>
+                        {r.error_text}
+                      </p>
+                    )}
+                  </div>
+                </td>
                 <td className="px-5 py-3">
                   <div className="flex flex-wrap gap-2 items-center">
                     {r.status === 'pending' && tab === 'upcoming' && (
@@ -533,13 +549,23 @@ export default function Schedule() {
                       </button>
                     )}
                     {r.status === 'failed' && (
-                      <button
-                        type="button"
-                        onClick={() => retryRow(r)}
-                        className="px-3 py-1.5 rounded-lg text-xs border border-white/15 text-white/60 hover:text-white/80"
-                      >
-                        Retry
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => retryRow(r)}
+                          disabled={busyId === r.id}
+                          className="px-3 py-1.5 rounded-lg text-xs border border-gold/40 text-gold hover:bg-gold/10 disabled:opacity-50"
+                        >
+                          {busyId === r.id ? 'Generating…' : 'Retry'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteRow(r.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs border border-red-400/30 text-red-300/90 hover:bg-red-400/10"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                     {r.status === 'pending' && tab === 'upcoming' && (
                       <button
