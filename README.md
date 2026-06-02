@@ -27,6 +27,19 @@ Second service, cron schedule, command:
 npm run cron:publishing
 ```
 
+## Deploy (Railway)
+
+The repo includes a **Dockerfile** (Next.js standalone) so Railway skips the flaky Nixpacks builder.
+
+Required env vars in Railway (Settings → Variables):
+
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `CRON_SECRET`, `ANTHROPIC_API_KEY`, `REPLICATE_API_TOKEN`
+
+If a build still fails with `$NIXPACKS_PATH` errors, add `NIXPACKS_NO_CACHE=1` or ensure Railway is using the Dockerfile builder.
+
 ## Env
 
 Use `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, `REPLICATE_API_TOKEN`, `NEXT_PUBLIC_SITE_URL`.
