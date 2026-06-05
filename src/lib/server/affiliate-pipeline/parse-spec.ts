@@ -1,6 +1,7 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
 import { extractEditorialReviewBody, repairCorruptedPipelineHtml } from './repair-html'
 import {
+  extractAmazonLink,
   extractListItems,
   filterProductSpecs,
   htmlParagraphsToText,
@@ -87,9 +88,17 @@ function parsePipelineProductBlock(sectionHtml: string, headingRaw: string): Art
   const award_color =
     awardColorMatch && /gold|versatile|value/.test(awardColorMatch) ? awardColorMatch : undefined
 
+  const amazonLink = extractAmazonLink(sectionHtml)
+  const imageFromHtml =
+    sectionHtml.match(/<div class="product-image-wrap"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1] ??
+    sectionHtml.match(/<img[^>]+src="([^"]+)"[^>]*alt="[^"]*"[^>]*loading="lazy"/i)?.[1]
+
   return {
     search_keywords: name,
     name,
+    asin: amazonLink?.asin ?? undefined,
+    affiliate_url: amazonLink?.href,
+    image_url: imageFromHtml || undefined,
     tagline,
     award_label: tagline,
     award_color,

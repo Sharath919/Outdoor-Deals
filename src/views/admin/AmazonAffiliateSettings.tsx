@@ -32,6 +32,12 @@ export default function AmazonAffiliateSettings() {
   }))
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
+  const [testingPaapi, setTestingPaapi] = useState(false)
+  const [paapiTestResult, setPaapiTestResult] = useState<{
+    success: boolean
+    message: string
+    errors?: string[]
+  } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -104,6 +110,58 @@ export default function AmazonAffiliateSettings() {
     toast.success('Amazon affiliate settings saved')
   }
 
+  async function testPaapiConnection() {
+    setTestingPaapi(true)
+    setPaapiTestResult(null)
+    const toastId = toast.loading('Testing PA-API connection…')
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        toast.error('Not signed in — refresh and log in again', { id: toastId })
+        return
+      }
+
+      const res = await fetch('/api/admin/test-paapi', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const message = data.error || `PA-API test failed (${res.status})`
+        setPaapiTestResult({ success: false, message, errors: data.errors })
+        toast.error(message, { id: toastId })
+        return
+      }
+
+      setPaapiTestResult({
+        success: Boolean(data.success),
+        message: data.message || (data.success ? 'PA-API connected' : 'PA-API test failed'),
+        errors: data.errors,
+      })
+
+      if (data.success) {
+        toast.success(data.message || 'PA-API connected', { id: toastId })
+      } else {
+        toast.error(data.message || 'PA-API test failed', {
+          id: toastId,
+          description: Array.isArray(data.errors) ? data.errors.slice(0, 2).join('; ') : undefined,
+          duration: 12_000,
+        })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'PA-API test failed'
+      setPaapiTestResult({ success: false, message })
+      toast.error(message, { id: toastId })
+    } finally {
+      setTestingPaapi(false)
+    }
+  }
+
   async function clearSecret(key: 'amazon_paapi_access_key' | 'amazon_paapi_secret_key') {
     const label = key === 'amazon_paapi_access_key' ? 'access key' : 'secret key'
     if (!confirm(`Remove the stored PA-API ${label}?`)) return
@@ -162,6 +220,27 @@ export default function AmazonAffiliateSettings() {
             )}
           </li>
         </ul>
+        {paapiReady && (
+          <div className="pt-2 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={testPaapiConnection}
+              disabled={testingPaapi}
+              className="font-inter text-xs px-3 py-1.5 rounded-lg border border-gold/40 text-gold hover:bg-gold/10 disabled:opacity-50"
+            >
+              {testingPaapi ? 'Testing…' : 'Test PA-API connection'}
+            </button>
+            {paapiTestResult && (
+              <span
+                className={`font-inter text-xs ${
+                  paapiTestResult.success ? 'text-green-400' : 'text-amber-400/90'
+                }`}
+              >
+                {paapiTestResult.message}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <section className="rounded-xl p-6 glass border border-white/10 space-y-5">

@@ -1,3 +1,5 @@
+import type { ArticleProductSpec } from '@/lib/server/affiliate-pipeline/types'
+
 export type ArticleStatus = 'draft' | 'review' | 'published'
 
 export type ArticleTemplate =
@@ -13,6 +15,8 @@ export interface Article {
   title: string
   meta_description: string | null
   content_html: string | null
+  /** Persisted PA-API product specs for re-hydrate (search_keywords, ASINs). */
+  product_specs?: ArticleProductSpec[] | null
   hero_image_url: string | null
   atmosphere_image_url: string | null
   card_id: string | null

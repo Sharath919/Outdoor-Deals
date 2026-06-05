@@ -12,12 +12,25 @@ import {
   isValidPaapiItem,
   searchProductByKeywords,
   type PaapiItem,
+  type PaapiLookupFailure,
 } from './paapi-client'
 
 const PAAPI_RATE_LIMIT_MS = 1100
 
 function getSearchKeywords(product: ArticleProductSpec): string {
   return product.search_keywords?.trim() || product.name?.trim() || ''
+}
+
+function formatPaapiFailureWarning(
+  context: string,
+  keywords: string,
+  failure: PaapiLookupFailure,
+): string {
+  const detail = failure.errors.length ? failure.errors.join('; ') : 'no catalog match'
+  if (failure.fatal) {
+    return `PA-API error for ${context} "${keywords}": ${detail}`
+  }
+  return `PA-API found no match for "${keywords}" (${detail}) — using Amazon search link`
 }
 
 function shapePaapiProduct(
@@ -82,6 +95,7 @@ async function resolveProduct(
   config: AmazonAffiliateServerConfig,
   associateTag: string,
   paapiConfigured: boolean,
+  category: string | null | undefined,
   warnings: string[],
 ): Promise<{ product: HydratedProduct; cache: Record<string, Record<string, unknown>> }> {
   const displayName = product.name?.trim() ?? ''
@@ -115,25 +129,24 @@ async function resolveProduct(
     if (paapiConfigured) {
       const fetched = await getItemByAsin(cachedAsin, config)
       await new Promise((r) => setTimeout(r, PAAPI_RATE_LIMIT_MS))
-      if (fetched) {
+      if (fetched.ok) {
         nextCache = mergeCache(nextCache, fetched.asin, fetched.item)
         return { product: applyValidated(fetched.asin, fetched.item), cache: nextCache }
       }
+      warnings.push(formatPaapiFailureWarning(`ASIN ${cachedAsin}`, displayName || cachedAsin, fetched))
     }
   }
 
   if (paapiConfigured && keywords) {
-    const searchResult = await searchProductByKeywords(keywords, config)
+    const searchResult = await searchProductByKeywords(keywords, config, category)
     await new Promise((r) => setTimeout(r, PAAPI_RATE_LIMIT_MS))
 
-    if (searchResult) {
+    if (searchResult.ok) {
       nextCache = mergeCache(nextCache, searchResult.asin, searchResult.item)
       return { product: applyValidated(searchResult.asin, searchResult.item), cache: nextCache }
     }
 
-    warnings.push(
-      `PA-API found no match for "${keywords}" — using Amazon search link (check PA-API credentials and associate sales quota)`,
-    )
+    warnings.push(formatPaapiFailureWarning('search', keywords, searchResult))
   } else if (!keywords) {
     warnings.push('Product missing name and search_keywords — skipped resolution')
     return {
@@ -150,6 +163,7 @@ async function resolveProduct(
 export async function hydrateProducts(
   supabase: SupabaseClient,
   products: ArticleProductSpec[],
+  category?: string | null,
 ): Promise<{ products: HydratedProduct[]; warnings: string[] }> {
   const config = await readAmazonAffiliateServerConfig()
   const warnings: string[] = []
@@ -176,6 +190,7 @@ export async function hydrateProducts(
       config,
       associateTag,
       paapiConfigured,
+      category,
       warnings,
     )
     cache = result.cache

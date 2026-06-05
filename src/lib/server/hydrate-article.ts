@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-import { applyPipelineToArticle } from '@/lib/server/affiliate-pipeline'
+import {
+  applyPipelineToArticle,
+  parseStoredProductSpecs,
+} from '@/lib/server/affiliate-pipeline'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
 
 const corsHeaders: Record<string, string> = {
@@ -43,7 +46,7 @@ export async function handleHydrateArticle(request: Request): Promise<Response> 
 
   const { data: article, error: fetchError } = await supabase
     .from('articles')
-    .select('id, slug, content_html, category')
+    .select('id, slug, content_html, category, product_specs')
     .eq('id', articleId)
     .maybeSingle()
 
@@ -52,6 +55,7 @@ export async function handleHydrateArticle(request: Request): Promise<Response> 
     slug: string
     content_html: string | null
     category: string | null
+    product_specs: unknown
   }
 
   const row = article as ArticleRow | null
@@ -62,6 +66,7 @@ export async function handleHydrateArticle(request: Request): Promise<Response> 
     const result = await applyPipelineToArticle(supabase, row.id, {
       contentHtml: row.content_html,
       category: row.category,
+      productSpecs: parseStoredProductSpecs(row.product_specs),
     })
 
     return jsonResponse({

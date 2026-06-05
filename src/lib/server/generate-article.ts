@@ -7,7 +7,11 @@ import {
   parseClaudeArticleJson,
   repairBrokenArticleHtml,
 } from '@/lib/article-content'
-import { runAffiliatePipeline, linkProductsToArticle } from '@/lib/server/affiliate-pipeline'
+import {
+  linkProductsToArticle,
+  runAffiliatePipeline,
+  serializeProductSpecs,
+} from '@/lib/server/affiliate-pipeline'
 import { isAdminAccessToken, isCronSecretToken } from '@/lib/server/admin-auth'
 import { TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
 import { getBuiltInArticleMachinePrompt } from '@/config/defaultArticleMachinePrompts'
@@ -730,6 +734,7 @@ export async function handlePost(request: Request): Promise<Response> {
       const pipeline = await runAffiliatePipeline(supabase, {
         contentHtml: rawContentHtml,
         articleJson: articleJson as Record<string, unknown>,
+        category: String(articleJson.category || '').trim() || null,
       })
       if (pipeline.render.contentHtml.trim()) {
         contentHtml = pipeline.render.contentHtml
@@ -825,6 +830,8 @@ export async function handlePost(request: Request): Promise<Response> {
         category: articleJson.category,
         card_id: articleTopic || null,
         content_html: contentHtml,
+        product_specs:
+          hydratedProducts.length > 0 ? serializeProductSpecs(hydratedProducts) : [],
         hero_image_url: finalHeroUrl || null,
         atmosphere_image_url: finalHeroUrl || null,
         status: 'published',
