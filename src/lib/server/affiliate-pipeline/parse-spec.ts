@@ -1,7 +1,9 @@
 import type { ArticleProductSpec, ArticleSpec } from './types'
 import { extractEditorialReviewBody, repairCorruptedPipelineHtml } from './repair-html'
+import { isPlaceholderImageUrl } from './image-utils'
 import {
   extractAmazonLink,
+  extractImageFromSection,
   extractListItems,
   filterProductSpecs,
   htmlParagraphsToText,
@@ -89,9 +91,7 @@ function parsePipelineProductBlock(sectionHtml: string, headingRaw: string): Art
     awardColorMatch && /gold|versatile|value/.test(awardColorMatch) ? awardColorMatch : undefined
 
   const amazonLink = extractAmazonLink(sectionHtml)
-  const imageFromHtml =
-    sectionHtml.match(/<div class="product-image-wrap"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1] ??
-    sectionHtml.match(/<img[^>]+src="([^"]+)"[^>]*alt="[^"]*"[^>]*loading="lazy"/i)?.[1]
+  const imageFromHtml = extractImageFromSection(sectionHtml)
 
   return {
     search_keywords: name,
@@ -141,9 +141,15 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
     }
   }
 
+  const amazonLink = extractAmazonLink(sectionHtml)
+  const imageFromHtml = extractImageFromSection(sectionHtml)
+
   return {
     search_keywords: name,
     name,
+    asin: amazonLink?.asin ?? undefined,
+    affiliate_url: amazonLink?.href,
+    image_url: imageFromHtml || undefined,
     tagline,
     award_label: tagline,
     specs,
@@ -153,6 +159,35 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
     bottom_line,
     price_range,
   }
+}
+
+function extractProductsFromPlaceholderImages(html: string): ArticleProductSpec[] {
+  const products: ArticleProductSpec[] = []
+  const seen = new Set<string>()
+  const imgRe = /<img\b([^>]*)\/?>/gi
+  let match: RegExpExecArray | null
+
+  while ((match = imgRe.exec(html)) !== null) {
+    const attrs = match[1]
+    const src = attrs.match(/\bsrc="([^"]*)"/i)?.[1] ?? ''
+    const alt = attrs.match(/\balt="([^"]*)"/i)?.[1]?.trim() ?? ''
+    if (!alt || alt.length < 3) continue
+    if (!isPlaceholderImageUrl(src) && !/media-amazon|images-amazon|ssl-images-amazon/i.test(src)) {
+      continue
+    }
+
+    const key = alt.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    products.push({
+      name: alt,
+      search_keywords: alt,
+      image_url: src || undefined,
+    })
+  }
+
+  return products
 }
 
 type HeadingMatch = { index: number; length: number; heading: string; level: 'h2' | 'h3' }
@@ -201,6 +236,10 @@ export function parseHtmlToArticleSpec(html: string, meta: Partial<ArticleSpec> 
 
   if (headingMatches.length === 0) {
     tail_html = afterIntro
+    const fromPlaceholderImages = extractProductsFromPlaceholderImages(working)
+    if (fromPlaceholderImages.length > 0) {
+      products.push(...fromPlaceholderImages)
+    }
   } else {
     const buyersEnd = headingMatches[0].index
     buyers_guide = afterIntro.slice(0, buyersEnd)

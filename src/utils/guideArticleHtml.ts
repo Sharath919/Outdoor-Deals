@@ -1,4 +1,8 @@
 import type { GuideProduct } from '@/lib/articles-server'
+import {
+  findProductImageByTitle,
+  injectHydratedImagesIntoHtml,
+} from '@/lib/server/affiliate-pipeline/image-utils'
 import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
 
@@ -64,9 +68,7 @@ function parseSpecList(ulHtml: string): {
 }
 
 function findProductImage(title: string, products: GuideProduct[]): string | null {
-  const normalized = title.toLowerCase()
-  const match = products.find((p) => p.title.toLowerCase().includes(normalized.split(' ')[0]))
-  return match?.image_url ?? null
+  return findProductImageByTitle(title, products)
 }
 
 function findProductUrl(title: string, products: GuideProduct[], fallbackHref: string): string {
@@ -292,6 +294,10 @@ export function prepareGuideArticleHtml(
 ): GuideArticleSegments {
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
+  html = injectHydratedImagesIntoHtml(
+    html,
+    products.map((p) => ({ name: p.title, image_url: p.image_url })),
+  )
 
   const isPipelineHtml = /\bproduct-review\b/.test(html)
 

@@ -16,7 +16,7 @@ export function extractAsinFromHref(href: string): string | null {
 /** Split on editorial em/en dash only — not hyphens in Co-op, 2-person, etc. */
 export function parseProductHeading(raw: string): { name: string; tagline: string } {
   const text = stripHtml(raw)
-  const parts = text.split(/\s*[—–]\s*/)
+  const parts = text.split(/\s*[—–]\s*|\s+-\s+/)
   if (parts.length >= 2) {
     return { name: parts[0].trim(), tagline: parts.slice(1).join(' — ').trim() }
   }
@@ -32,8 +32,21 @@ export function isProductHeading(text: string): boolean {
   if (NON_PRODUCT_HEADING.test(t)) return false
   if (/\?\s*$/.test(t)) return false
   if (/^(should|how|what|when|where|why|is|are|can|do|does|will)\b/i.test(t)) return false
-  // Real product headings use an em/en dash between name and tagline
-  return /[—–]/.test(t)
+  // Product headings use an em/en dash or spaced hyphen between name and tagline
+  return /[—–]/.test(t) || /\s+-\s+/.test(t)
+}
+
+export function extractImageFromSection(sectionHtml: string): string | undefined {
+  const fromWrap =
+    sectionHtml.match(/<div class="product-image-wrap"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1] ??
+    sectionHtml.match(/<div class="product-image"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1]
+  if (fromWrap) return fromWrap
+
+  const lazyImg = sectionHtml.match(/<img[^>]+src="([^"]+)"[^>]*loading="lazy"/i)?.[1]
+  if (lazyImg) return lazyImg
+
+  const anyImg = sectionHtml.match(/<img[^>]+src="([^"]+)"/i)?.[1]
+  return anyImg || undefined
 }
 
 export function extractAmazonLink(sectionHtml: string): { href: string; asin: string | null } | null {

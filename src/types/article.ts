@@ -17,6 +17,7 @@ export interface Article {
   content_html: string | null
   /** Persisted PA-API product specs for re-hydrate (search_keywords, ASINs). */
   product_specs?: ArticleProductSpec[] | null
+  last_hydrated_at?: string | null
   hero_image_url: string | null
   atmosphere_image_url: string | null
   card_id: string | null

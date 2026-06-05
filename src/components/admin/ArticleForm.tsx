@@ -597,7 +597,7 @@ export default function ArticleForm({
             disabled={isLoading || !form.title || !form.slug || !form.content_html || slugTaken}
             className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-semibold text-sm transition-colors disabled:opacity-30"
           >
-            {isLoading ? 'Publishing…' : 'Publish Now'}
+            {isLoading ? 'Hydrating products…' : 'Publish Now'}
           </button>
         )}
       </div>

@@ -19,6 +19,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { promptKeyBadge, SCHEDULE_TEMPLATE_TYPES, TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
 import { OUTDOOR_CATEGORY_OPTIONS, outdoorCategoryLabel } from '@/config/outdoorCategories'
+import { publishArticleWithHydration } from '@/utils/publishArticle'
 import { triggerSiteRebuild } from '@/utils/triggerRebuild'
 import type { Article } from '@/types/article'
 
@@ -412,23 +413,68 @@ export default function AdminArticleList() {
 
   const handlePublish = async (article: Article) => {
     setActionLoading(article.id)
-    const { error } = await updateArticle(article.id, { status: 'published' }, {
-      existingPublishedAt: article.published_at,
+    const toastId = toast.loading('Hydrating products…', {
+      description: 'Then publishing article',
     })
-    if (error) {
-      setActionLoading(null)
-      toast.error(error)
-      return
-    }
-    toast.success('Article published')
-    await handleHydrateProducts({ ...article, status: 'published' })
-    load()
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 120_000)
 
-    const rebuild = await triggerSiteRebuild()
-    if (rebuild.ok) {
-      toast.success('Site rebuild started — article URL live in ~3 minutes')
-    } else {
-      toast.message('Published. Click Rebuild Site to generate the static article page.')
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        toast.error('Not signed in — refresh and log in again', { id: toastId })
+        return
+      }
+
+      const { ok, data } = await publishArticleWithHydration({
+        articleId: article.id,
+        existingPublishedAt: article.published_at,
+        accessToken: token,
+        signal: controller.signal,
+      })
+
+      if (!ok) {
+        toast.error(data.error || 'Publish failed', { id: toastId })
+        return
+      }
+
+      const hydrateNote = data.hydration_skipped
+        ? 'Skipped re-hydration (hydrated within 24h)'
+        : `Linked ${data.products_linked ?? 0} products`
+
+      toast.success(`Published — ${hydrateNote}`, { id: toastId })
+
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setHydrateWarnings((prev) => ({ ...prev, [article.id]: data.warnings as string[] }))
+        toast.warning(data.warnings.slice(0, 3).join('\n'), {
+          duration: 12_000,
+          description:
+            data.warnings.length > 3
+              ? `+ ${data.warnings.length - 3} more — see article list warnings`
+              : undefined,
+        })
+      }
+
+      load()
+
+      const rebuild = await triggerSiteRebuild()
+      if (rebuild.ok) {
+        toast.success('Site rebuild started — article URL live in ~3 minutes')
+      } else {
+        toast.message('Published. Click Rebuild Site to generate the static article page.')
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        toast.error('Publish timed out after 2 minutes — check Railway logs', { id: toastId })
+      } else {
+        toast.error(err instanceof Error ? err.message : 'Publish failed', { id: toastId })
+      }
+    } finally {
+      window.clearTimeout(timeout)
+      setActionLoading(null)
     }
   }
 
@@ -858,7 +904,7 @@ export default function AdminArticleList() {
                       disabled={actionLoading === article.id}
                       className="text-green-400 hover:text-green-300 text-xs px-3 py-1.5 border border-green-400/30 rounded-lg transition-colors disabled:opacity-30"
                     >
-                      {actionLoading === article.id ? '...' : 'Publish'}
+                      {actionLoading === article.id ? 'Hydrating…' : 'Publish'}
                     </button>
                   )}
                   <button

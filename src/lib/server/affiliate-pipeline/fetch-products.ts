@@ -8,6 +8,10 @@ import type { AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
 import type { ArticleProductSpec, HydratedProduct } from './types'
 import { isCacheStale, loadPaapiCache, mergeCache, savePaapiCache } from './cache'
 import {
+  logPaapiItemSample,
+  resolveHydratedImageUrl,
+} from './image-utils'
+import {
   getItemByAsin,
   isValidPaapiItem,
   searchProductByKeywords,
@@ -112,18 +116,23 @@ async function resolveProduct(
   paapiConfigured: boolean,
   category: string | null | undefined,
   warnings: string[],
+  logPaapiResponse: boolean,
 ): Promise<{ product: HydratedProduct; cache: Record<string, Record<string, unknown>> }> {
   const displayName = product.name?.trim() ?? ''
   const keywords = getSearchKeywords(product)
   let nextCache = cache
 
   const applyValidated = (asin: string, item: PaapiItem): HydratedProduct => {
+    if (logPaapiResponse) {
+      logPaapiItemSample(asin, item)
+    }
+
     const shaped = shapePaapiProduct(asin, item, associateTag, displayName)
     return {
       ...product,
       asin,
       ...shaped,
-      image_url: product.image_url ?? shaped.image_url,
+      image_url: resolveHydratedImageUrl(product.image_url, shaped.image_url),
       price_range: product.price_range ?? shaped.price_range,
       affiliate_url: shaped.affiliate_url,
       specs: product.specs ?? {},
@@ -209,6 +218,7 @@ export async function hydrateProducts(
         paapiConfigured,
         category,
         warnings,
+        i === 0,
       )
       cache = result.cache
       hydrated.push(result.product)

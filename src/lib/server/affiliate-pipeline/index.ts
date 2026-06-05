@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { hydrateProducts } from './fetch-products'
+import { injectHydratedImagesIntoHtml } from './image-utils'
 import { mergeStoredProductSpecs, serializeProductSpecs } from './product-specs'
 import { buildSpecFromClaudeOutput } from './parse-spec'
 import { repairCorruptedPipelineHtml } from './repair-html'
-import { renderArticleBody } from './render'
+import { renderArticleBody, renderCompareTable } from './render'
 import { linkProductsToArticle } from './link-products'
 import type { ArticleProductSpec, ArticleSpec, HydratedArticleSpec, PipelineResult } from './types'
 
@@ -45,7 +46,28 @@ export async function runAffiliatePipeline(
     products,
   }
 
+  const preserveManualHtml =
+    products.length > 0 &&
+    (/\bproduct-review\b/i.test(contentHtml) || /PLACEHOLDER/i.test(contentHtml)) &&
+    !spec.buyers_guide?.trim()
+
+  if (preserveManualHtml) {
+    const patchedContentHtml = injectHydratedImagesIntoHtml(contentHtml, products)
+    return {
+      spec: hydrated,
+      render: {
+        contentHtml: patchedContentHtml,
+        compareTableHtml: renderCompareTable(products),
+        introHtml: '',
+        buyersGuideHtml: '',
+        reviewsHtml: '',
+      },
+      warnings,
+    }
+  }
+
   const render = renderArticleBody(hydrated)
+  render.contentHtml = injectHydratedImagesIntoHtml(render.contentHtml, hydrated.products)
 
   return { spec: hydrated, render, warnings }
 }
@@ -68,6 +90,7 @@ export async function applyPipelineToArticle(
       .update({
         content_html: result.render.contentHtml,
         product_specs: serializeProductSpecs(result.spec.products),
+        last_hydrated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', articleId)
