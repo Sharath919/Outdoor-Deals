@@ -15,22 +15,37 @@ import {
   type PaapiLookupFailure,
 } from './paapi-client'
 
-const PAAPI_RATE_LIMIT_MS = 1100
+const PAAPI_INTER_PRODUCT_DELAY_MS = 1000
 
 function getSearchKeywords(product: ArticleProductSpec): string {
   return product.search_keywords?.trim() || product.name?.trim() || ''
 }
 
+function primaryPaapiErrorReason(failure: PaapiLookupFailure): string {
+  if (!failure.errors.length) return 'no catalog match'
+  const first = failure.errors[0]
+  const codeMatch = first.match(/^([^:]+):/)
+  if (codeMatch) return codeMatch[1].trim()
+  return first
+}
+
 function formatPaapiFailureWarning(
-  context: string,
-  keywords: string,
+  productName: string,
   failure: PaapiLookupFailure,
 ): string {
-  const detail = failure.errors.length ? failure.errors.join('; ') : 'no catalog match'
+  const reason = primaryPaapiErrorReason(failure)
+  const detail = failure.errors.length ? failure.errors.join('; ') : reason
   if (failure.fatal) {
-    return `PA-API error for ${context} "${keywords}": ${detail}`
+    return `PA-API error for "${productName}" (${reason}: ${detail})`
   }
-  return `PA-API found no match for "${keywords}" (${detail}) — using Amazon search link`
+  return `PA-API found no match for "${productName}" (${reason}) — using Amazon search link`
+}
+
+function logPaapiFallback(productName: string, failure: PaapiLookupFailure): void {
+  const reason = primaryPaapiErrorReason(failure)
+  console.warn(
+    `⚠ PA-API found no match for "${productName}" (${reason}) — using Amazon search link`,
+  )
 }
 
 function shapePaapiProduct(
@@ -128,25 +143,25 @@ async function resolveProduct(
 
     if (paapiConfigured) {
       const fetched = await getItemByAsin(cachedAsin, config)
-      await new Promise((r) => setTimeout(r, PAAPI_RATE_LIMIT_MS))
       if (fetched.ok) {
         nextCache = mergeCache(nextCache, fetched.asin, fetched.item)
         return { product: applyValidated(fetched.asin, fetched.item), cache: nextCache }
       }
-      warnings.push(formatPaapiFailureWarning(`ASIN ${cachedAsin}`, displayName || cachedAsin, fetched))
+      logPaapiFallback(displayName || cachedAsin, fetched)
+      warnings.push(formatPaapiFailureWarning(displayName || cachedAsin, fetched))
     }
   }
 
   if (paapiConfigured && keywords) {
     const searchResult = await searchProductByKeywords(keywords, config, category)
-    await new Promise((r) => setTimeout(r, PAAPI_RATE_LIMIT_MS))
 
     if (searchResult.ok) {
       nextCache = mergeCache(nextCache, searchResult.asin, searchResult.item)
       return { product: applyValidated(searchResult.asin, searchResult.item), cache: nextCache }
     }
 
-    warnings.push(formatPaapiFailureWarning('search', keywords, searchResult))
+    logPaapiFallback(displayName || keywords, searchResult)
+    warnings.push(formatPaapiFailureWarning(displayName || keywords, searchResult))
   } else if (!keywords) {
     warnings.push('Product missing name and search_keywords — skipped resolution')
     return {
@@ -183,18 +198,32 @@ export async function hydrateProducts(
   let cache = await loadPaapiCache(supabase)
 
   const hydrated: HydratedProduct[] = []
-  for (const product of products) {
-    const result = await resolveProduct(
-      product,
-      cache,
-      config,
-      associateTag,
-      paapiConfigured,
-      category,
-      warnings,
-    )
-    cache = result.cache
-    hydrated.push(result.product)
+  for (let i = 0; i < products.length; i++) {
+    const product = products[i]
+    try {
+      const result = await resolveProduct(
+        product,
+        cache,
+        config,
+        associateTag,
+        paapiConfigured,
+        category,
+        warnings,
+      )
+      cache = result.cache
+      hydrated.push(result.product)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`⚠ PA-API failed for "${product.name ?? 'unknown'}": ${message}`)
+      warnings.push(
+        `PA-API failed for "${product.name ?? 'unknown'}" (${message}) — using Amazon search link`,
+      )
+      hydrated.push(shapeSearchFallbackProduct(product, associateTag))
+    }
+
+    if (i < products.length - 1) {
+      await new Promise((r) => setTimeout(r, PAAPI_INTER_PRODUCT_DELAY_MS))
+    }
   }
 
   await savePaapiCache(supabase, cache)

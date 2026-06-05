@@ -25,6 +25,21 @@ HTML structure (after the JSON block):
 8. End with --- IMAGE PROMPT --- and one hero scene description (outdoor, no text, no logos)
 `.trim()
 
+const FAILURE_MODES_TO_AVOID = `
+## FAILURE MODES TO AVOID
+
+BANNED BRANDS — These brands have little or no Amazon US presence. Never include them regardless of what web search returns:
+- Decathlon / Forclaz
+- Vango
+- Heimplanet
+- Robens
+- Crua
+- Alpkit
+- Hilleberg (ultra-premium, rarely on Amazon)
+
+If web search for a product returns only non-Amazon.com URLs, or only amazon.co.uk / amazon.de URLs, treat it as unavailable and pick a replacement that IS sold on amazon.com.
+`.trim()
+
 export const DEFAULT_ARTICLE_MACHINE_PROMPT = `
 You write detailed commercial affiliate buying guides for outdoor and camping readers.
 Tone: practical, honest, r/camping-style — like a knowledgeable friend who actually camps.
@@ -37,6 +52,8 @@ OUTPUT ORDER (always):
 JSON metadata fields: title, slug, meta_description, seo_title, category, template_type, products[]
 
 ${AFFILIATE_PIPELINE_RULES}
+
+${FAILURE_MODES_TO_AVOID}
 `.trim()
 
 export const DEFAULT_ROUNDUP_UNDER_BUDGET_PROMPT = `
@@ -51,6 +68,8 @@ OUTPUT ORDER:
 3. --- IMAGE PROMPT ---
 
 ${AFFILIATE_PIPELINE_RULES}
+
+${FAILURE_MODES_TO_AVOID}
 `.trim()
 
 export const DEFAULT_PROMPTS_BY_CONFIG_KEY: Record<string, string> = {
