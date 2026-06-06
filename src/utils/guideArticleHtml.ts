@@ -1,8 +1,5 @@
 import type { GuideProduct } from '@/lib/articles-server'
-import {
-  findProductImageByTitle,
-  injectHydratedImagesIntoHtml,
-} from '@/lib/server/affiliate-pipeline/image-utils'
+import { findProductImageByTitle } from '@/lib/server/affiliate-pipeline/image-utils'
 import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
 
@@ -20,6 +17,43 @@ const EMPTY_AFFILIATE_CTA_RE = /<div[^>]*\baffiliate-cta\b[^>]*>\s*<\/div>/gi
 
 function stripHtml(text: string): string {
   return text.replace(/<[^>]+>/g, '').trim()
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Replace PLACEHOLDER review-card img src values using product title ↔ alt matching. */
+function injectProductImages(
+  contentHtml: string,
+  products: Array<{ name: string; image_url: string | null }>,
+): string {
+  let html = contentHtml
+
+  for (const product of products) {
+    const imageUrl = product.image_url?.trim()
+    if (!imageUrl) continue
+
+    const name = product.name?.trim()
+    if (!name) continue
+
+    const escapedName = escapeRegExp(name)
+    const altFragment = `[^"]*${escapedName}[^"]*`
+
+    // <img src="PLACEHOLDER" alt="...product name...">
+    html = html.replace(
+      new RegExp(`(<img\\b[^>]*\\bsrc=")PLACEHOLDER("[^>]*\\balt="${altFragment}"[^>]*>)`, 'gi'),
+      `$1${imageUrl}$2`,
+    )
+
+    // <img alt="...product name..." src="PLACEHOLDER">
+    html = html.replace(
+      new RegExp(`(<img\\b[^>]*\\balt="${altFragment}"[^>]*\\bsrc=")PLACEHOLDER(")`, 'gi'),
+      `$1${imageUrl}$2`,
+    )
+  }
+
+  return html
 }
 
 function slugify(text: string): string {
@@ -294,7 +328,7 @@ export function prepareGuideArticleHtml(
 ): GuideArticleSegments {
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
-  html = injectHydratedImagesIntoHtml(
+  html = injectProductImages(
     html,
     products.map((p) => ({ name: p.title, image_url: p.image_url })),
   )
