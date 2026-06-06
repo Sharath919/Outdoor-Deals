@@ -36,6 +36,40 @@ export function isProductHeading(text: string): boolean {
   return /[—–]/.test(t) || /\s+-\s+/.test(t)
 }
 
+export function isManualProductH2(attrs: string): boolean {
+  return /\bid=["']product-\d+["']/i.test(attrs)
+}
+
+/** Manual HTML: prefer h3.product-name, then PLACEHOLDER img alt, then h2 heading. */
+export function resolveProductNameFromSection(
+  sectionHtml: string,
+  headingRaw: string,
+): { name: string; tagline: string } {
+  const h3Match = sectionHtml.match(
+    /<h3\b[^>]*\bclass="[^"]*\bproduct-name\b[^"]*"[^>]*>([\s\S]*?)<\/h3>/i,
+  )
+  if (h3Match) {
+    const name = stripHtml(h3Match[1])
+    if (name.length >= 3) {
+      const { tagline } = parseProductHeading(headingRaw)
+      return { name, tagline }
+    }
+  }
+
+  const placeholderImg =
+    sectionHtml.match(/<img\b[^>]*\bsrc="PLACEHOLDER"[^>]*\balt="([^"]+)"/i) ??
+    sectionHtml.match(/<img\b[^>]*\balt="([^"]+)"[^>]*\bsrc="PLACEHOLDER"/i)
+  if (placeholderImg) {
+    const name = placeholderImg[1].trim()
+    if (name.length >= 3) {
+      const { tagline } = parseProductHeading(headingRaw)
+      return { name, tagline }
+    }
+  }
+
+  return parseProductHeading(headingRaw)
+}
+
 export function extractImageFromSection(sectionHtml: string): string | undefined {
   const fromWrap =
     sectionHtml.match(/<div class="product-image-wrap"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i)?.[1] ??

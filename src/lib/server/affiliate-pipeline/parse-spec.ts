@@ -7,9 +7,10 @@ import {
   extractListItems,
   filterProductSpecs,
   htmlParagraphsToText,
+  isManualProductH2,
   isPipelineRenderedSection,
   isProductHeading,
-  parseProductHeading,
+  resolveProductNameFromSection,
   stripHtml,
 } from './product-parse-utils'
 
@@ -61,7 +62,7 @@ function extractDivClassContent(html: string, className: string, untilClass?: st
 }
 
 function parsePipelineProductBlock(sectionHtml: string, headingRaw: string): ArticleProductSpec {
-  const { name, tagline } = parseProductHeading(headingRaw)
+  const { name, tagline } = resolveProductNameFromSection(sectionHtml, headingRaw)
 
   const specs: Record<string, string> = {}
   const specRe = /<div class="spec-item">\s*<span class="spec-label">([^<]*)<\/span>\s*<span class="spec-value">([^<]*)<\/span>\s*<\/div>/gi
@@ -116,7 +117,7 @@ function parseProductBlock(sectionHtml: string, headingRaw: string): ArticleProd
     return parsePipelineProductBlock(sectionHtml, headingRaw)
   }
 
-  const { name, tagline } = parseProductHeading(headingRaw)
+  const { name, tagline } = resolveProductNameFromSection(sectionHtml, headingRaw)
   const ulMatch = sectionHtml.match(/<ul\b[\s\S]*?<\/ul>/i)
   const { specs, pros, cons, price_range } = parseSpecList(ulMatch?.[0] ?? '')
 
@@ -194,16 +195,17 @@ type HeadingMatch = { index: number; length: number; heading: string; level: 'h2
 
 function collectProductHeadings(html: string): HeadingMatch[] {
   const matches: HeadingMatch[] = []
-  const re = /<(h2|h3)\b[^>]*>([\s\S]*?)<\/\1>/gi
+  const re = /<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi
   let match: RegExpExecArray | null
   while ((match = re.exec(html)) !== null) {
+    const attrs = match[1]
     const heading = match[2]
-    if (isProductHeading(stripHtml(heading))) {
+    if (isManualProductH2(attrs) || isProductHeading(stripHtml(heading))) {
       matches.push({
         index: match.index,
         length: match[0].length,
         heading,
-        level: match[1].toLowerCase() as 'h2' | 'h3',
+        level: 'h2',
       })
     }
   }

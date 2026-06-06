@@ -27,6 +27,12 @@ export async function runAffiliatePipeline(
     spec = mergeStoredProductSpecs(spec, input.productSpecs)
   }
 
+  console.log(
+    '[affiliate-pipeline] extracted products from HTML:',
+    spec.products.length,
+    spec.products.map((p) => p.name ?? p.search_keywords ?? '(unnamed)'),
+  )
+
   const warnings: string[] = []
   if (spec.products.length === 0) {
     warnings.push(

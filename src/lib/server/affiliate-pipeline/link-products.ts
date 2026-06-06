@@ -16,6 +16,7 @@ export async function linkProductsToArticle(
 ): Promise<void> {
   await supabase.from('article_products').delete().eq('article_id', articleId)
 
+  let linkedCount = 0
   for (let rank = 0; rank < products.length; rank++) {
     const product = products[rank]
     const affiliateUrl = product.affiliate_url?.trim()
@@ -79,5 +80,10 @@ export async function linkProductsToArticle(
       product_id: productId,
       rank,
     })
+    linkedCount++
   }
+
+  console.log(
+    `[affiliate-pipeline] linked ${linkedCount}/${products.length} products to article ${articleId}`,
+  )
 }
