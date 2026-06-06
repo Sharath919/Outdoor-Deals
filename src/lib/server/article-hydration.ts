@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache'
 import {
   applyPipelineToArticle,
   parseStoredProductSpecs,
@@ -71,6 +72,10 @@ export async function hydrateArticleRecord(
       category: row.category,
       productSpecs: parseStoredProductSpecs(row.product_specs),
     })
+
+    if (row.slug) {
+      revalidatePath(`/guides/${row.slug}`)
+    }
 
     return {
       success: true,

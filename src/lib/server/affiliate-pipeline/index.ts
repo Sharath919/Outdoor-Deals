@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { hydrateProducts } from './fetch-products'
-import { injectHydratedImagesIntoHtml } from './image-utils'
+import { injectReviewCardImages } from './image-utils'
 import { mergeStoredProductSpecs, serializeProductSpecs } from './product-specs'
 import { buildSpecFromClaudeOutput } from './parse-spec'
 import { repairCorruptedPipelineHtml } from './repair-html'
@@ -58,7 +58,7 @@ export async function runAffiliatePipeline(
     !spec.buyers_guide?.trim()
 
   if (preserveManualHtml) {
-    const patchedContentHtml = injectHydratedImagesIntoHtml(contentHtml, products)
+    const patchedContentHtml = injectReviewCardImages(contentHtml, products)
     return {
       spec: hydrated,
       render: {
@@ -73,7 +73,7 @@ export async function runAffiliatePipeline(
   }
 
   const render = renderArticleBody(hydrated)
-  render.contentHtml = injectHydratedImagesIntoHtml(render.contentHtml, hydrated.products)
+  render.contentHtml = injectReviewCardImages(render.contentHtml, hydrated.products)
 
   return { spec: hydrated, render, warnings }
 }

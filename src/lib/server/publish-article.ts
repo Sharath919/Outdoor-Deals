@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache'
 import { hydrateArticleRecord } from '@/lib/server/article-hydration'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
 
@@ -85,6 +86,10 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
   const warnings = [...hydration.warnings]
   if (hydration.error && !hydration.skipped) {
     warnings.push(`Published with hydration errors — ${hydration.error}`)
+  }
+
+  if (row.slug) {
+    revalidatePath(`/guides/${row.slug}`)
   }
 
   return jsonResponse({
