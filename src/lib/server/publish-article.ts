@@ -2,6 +2,11 @@ import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { hydrateArticleRecord } from '@/lib/server/article-hydration'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
+import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
+import {
+  extractProductSpecsFromImportJson,
+  renderArticleFromImportJson,
+} from '@/lib/server/render-article-from-import'
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +48,9 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
 
   const { data: article, error: fetchError } = await supabase
     .from('articles')
-    .select('id, slug, content_html, category, product_specs, last_hydrated_at, published_at, status')
+    .select(
+      'id, slug, content_html, category, product_specs, last_hydrated_at, published_at, status, import_json',
+    )
     .eq('id', articleId)
     .maybeSingle()
 
@@ -56,13 +63,45 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
     last_hydrated_at: string | null
     published_at: string | null
     status: string
+    import_json: Record<string, unknown> | null
   }
 
   const row = article as ArticleRow | null
   if (fetchError) return jsonResponse({ error: fetchError.message }, 500)
   if (!row) return jsonResponse({ error: 'Article not found' }, 404)
 
-  const hydration = await hydrateArticleRecord(supabase, row)
+  let hydrationRow = row
+  let forceHydration = false
+
+  if (row.import_json && typeof row.import_json === 'object' && !Array.isArray(row.import_json)) {
+    const amazonConfig = await readAmazonAffiliateServerConfig()
+    const renderedHtml = renderArticleFromImportJson(row.import_json, {
+      associateTag: amazonConfig.associateTag,
+    })
+    const productSpecs = extractProductSpecsFromImportJson(row.import_json)
+
+    const { error: renderError } = await supabase
+      .from('articles')
+      .update({
+        content_html: renderedHtml,
+        product_specs: productSpecs.length ? productSpecs : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', articleId)
+
+    if (renderError) {
+      return jsonResponse({ error: `Failed to render import JSON: ${renderError.message}` }, 500)
+    }
+
+    hydrationRow = {
+      ...row,
+      content_html: renderedHtml,
+      product_specs: productSpecs.length ? productSpecs : row.product_specs,
+    }
+    forceHydration = true
+  }
+
+  const hydration = await hydrateArticleRecord(supabase, hydrationRow, { force: forceHydration })
 
   const existingPublishedAt =
     body.existing_published_at?.trim() || row.published_at?.trim() || null

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Article, ArticleFormData } from '@/types/article'
 import { stripBrokenArticleImages } from '@/utils/articleContent'
+import { productSpecsFromImportJson } from '@/utils/claudeImportJson'
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim()
@@ -12,6 +13,9 @@ function formToInsert(
   authorId: string,
   authorName: string,
 ) {
+  const importJson = formData.import_json ?? null
+  const productSpecs = importJson ? productSpecsFromImportJson(importJson) : null
+
   return {
     title: formData.title.trim(),
     slug: formData.slug.trim(),
@@ -28,6 +32,9 @@ function formToInsert(
     author_id: authorId,
     author_name: authorName,
     published_at: formData.status === 'published' ? new Date().toISOString() : null,
+    import_json: importJson,
+    source: importJson ? 'manual_import' : 'pipeline',
+    product_specs: productSpecs?.length ? productSpecs : null,
   }
 }
 
@@ -57,6 +64,16 @@ function formToUpdate(formData: Partial<ArticleFormData>) {
     updates.canonical_url = emptyToNull(formData.canonical_url)
   }
   if (formData.status !== undefined) updates.status = formData.status
+
+  if (formData.import_json !== undefined) {
+    const importJson = formData.import_json
+    updates.import_json = importJson
+    if (importJson) {
+      updates.source = 'manual_import'
+      const specs = productSpecsFromImportJson(importJson)
+      if (specs.length) updates.product_specs = specs
+    }
+  }
 
   return updates
 }
@@ -462,5 +479,6 @@ export function articleToFormData(article: Article): ArticleFormData {
     seo_title: article.seo_title ?? '',
     canonical_url: article.canonical_url ?? '',
     status: article.status,
+    import_json: article.import_json ?? null,
   }
 }

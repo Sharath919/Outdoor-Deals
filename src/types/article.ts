@@ -17,6 +17,10 @@ export interface Article {
   content_html: string | null
   /** Persisted PA-API product specs for re-hydrate (search_keywords, ASINs). */
   product_specs?: ArticleProductSpec[] | null
+  /** Full Claude import JSON — rendered to content_html on publish. */
+  import_json?: Record<string, unknown> | null
+  /** `pipeline` (default) or `manual_import`. */
+  source?: string | null
   last_hydrated_at?: string | null
   hero_image_url: string | null
   atmosphere_image_url: string | null
@@ -50,4 +54,6 @@ export interface ArticleFormData {
   seo_title: string
   canonical_url: string
   status: ArticleStatus
+  /** Set when importing full product JSON from Claude. */
+  import_json?: Record<string, unknown> | null
 }

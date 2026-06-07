@@ -61,19 +61,42 @@ export default function WriterArticleEditor() {
     setSubmitError(null)
 
     const authorName = profile?.name || user.email || 'Admin'
-    const adminPublish = action === 'publish' && (isAdmin || profile?.role === 'admin') && !isNew
+    const adminPublish = action === 'publish' && (isAdmin || profile?.role === 'admin')
 
     if (adminPublish) {
-      const saveResult = await updateArticle(
-        id!,
-        { ...data, status: loadedStatus },
-        { existingPublishedAt },
-      )
-      if (saveResult.error) {
-        setLoading(false)
-        setSubmitError(saveResult.error)
-        toast.error(saveResult.error, { duration: 8000 })
-        return
+      let publishId = id
+
+      if (isNew) {
+        const createResult = await createArticle(
+          { ...data, status: 'draft' },
+          user.id,
+          authorName,
+        )
+        if (createResult.error) {
+          setLoading(false)
+          setSubmitError(createResult.error)
+          toast.error(createResult.error, { duration: 8000 })
+          return
+        }
+        publishId = createResult.data?.id
+        if (!publishId) {
+          setLoading(false)
+          setSubmitError('Failed to create article')
+          toast.error('Failed to create article', { duration: 8000 })
+          return
+        }
+      } else {
+        const saveResult = await updateArticle(
+          id!,
+          { ...data, status: loadedStatus },
+          { existingPublishedAt },
+        )
+        if (saveResult.error) {
+          setLoading(false)
+          setSubmitError(saveResult.error)
+          toast.error(saveResult.error, { duration: 8000 })
+          return
+        }
       }
 
       const toastId = toast.loading('Hydrating products…', {
@@ -94,7 +117,7 @@ export default function WriterArticleEditor() {
         }
 
         const { ok, data: publishData } = await publishArticleWithHydration({
-          articleId: id!,
+          articleId: publishId!,
           existingPublishedAt,
           accessToken: token,
           signal: controller.signal,
@@ -116,6 +139,10 @@ export default function WriterArticleEditor() {
 
         if (Array.isArray(publishData.warnings) && publishData.warnings.length > 0) {
           toast.warning(publishData.warnings.slice(0, 3).join('\n'), { duration: 12_000 })
+        }
+
+        if (isNew) {
+          router.replace(`${editBase}/${publishId}/edit`)
         }
       } catch (err) {
         const message =

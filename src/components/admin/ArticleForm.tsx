@@ -8,60 +8,9 @@ import type { ArticleFormData, ArticleTemplate } from '@/types/article'
 import { OUTDOOR_CATEGORY_OPTIONS } from '@/config/outdoorCategories'
 import { SITE_URL } from '@/config/site'
 import { generateSlug, isSlugAvailable, suggestAvailableSlug } from '@/utils/articles'
+import { parseClaudeImportJson } from '@/utils/claudeImportJson'
 import { supabase } from '@/lib/supabase'
 import SectionBreakDialog from '@/components/admin/SectionBreakDialog'
-
-const JSON_IMPORT_KEYS = [
-  'title',
-  'slug',
-  'meta_description',
-  'seo_title',
-  'template_type',
-  'category',
-  'topic',
-  'canonical_url',
-] as const satisfies readonly (keyof ArticleFormData)[]
-
-type JsonImportKey = (typeof JSON_IMPORT_KEYS)[number]
-
-function parseClaudeImportJson(raw: string): Record<JsonImportKey, string> | 'invalid' | 'empty' {
-  let text = raw.trim()
-  if (!text) return 'empty'
-
-  if (text.startsWith('```')) {
-    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    return 'invalid'
-  }
-
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return 'invalid'
-  }
-
-  const source = parsed as Record<string, unknown>
-  const result: Partial<Record<JsonImportKey, string>> = {}
-
-  for (const key of JSON_IMPORT_KEYS) {
-    let value = source[key]
-    if (value === undefined || value === null) {
-      if (key === 'topic') value = source.card_id
-      else continue
-    }
-    if (typeof value === 'string' && value.trim() !== '') {
-      result[key] = value.trim()
-    } else if (typeof value === 'number' || typeof value === 'boolean') {
-      result[key] = String(value)
-    }
-  }
-
-  if (Object.keys(result).length === 0) return 'empty'
-  return result as Record<JsonImportKey, string>
-}
 
 interface ArticleFormProps {
   articleId?: string
@@ -105,6 +54,7 @@ const EMPTY_FORM: ArticleFormData = {
   seo_title: '',
   canonical_url: '',
   status: 'draft',
+  import_json: null,
 }
 
 const GUIDES_PATH_PREFIX = `${SITE_URL.replace(/\/$/, '')}/guides/`
@@ -254,35 +204,50 @@ export default function ArticleForm({
     setImportMessage(null)
     const parsed = parseClaudeImportJson(importJson)
 
-    if (parsed === 'invalid') {
+    if (parsed.kind === 'invalid') {
       setImportMessage({ type: 'error', text: 'Invalid JSON — check the format' })
       return
     }
-    if (parsed === 'empty') {
+    if (parsed.kind === 'empty') {
       setImportMessage({ type: 'error', text: 'No matching fields found' })
       return
     }
 
-    const count = Object.keys(parsed).length
-    const { template_type: importedTemplate, ...rest } = parsed
+    const { fields, fullImport, productCount } = parsed
+    const count = Object.keys(fields).length
+    const { template_type: importedTemplate, ...rest } = fields
     setForm((f) => ({
       ...f,
       ...rest,
       ...(importedTemplate && isArticleTemplate(importedTemplate)
         ? { template_type: importedTemplate }
         : {}),
+      ...(fullImport ? { import_json: fullImport } : {}),
     }))
-    if (parsed.title) {
-      setCharCount((c) => ({ ...c, title: parsed.title.length }))
+    if (fields.title) {
+      setCharCount((c) => ({ ...c, title: fields.title!.length }))
     }
-    if (parsed.meta_description) {
-      setCharCount((c) => ({ ...c, meta: parsed.meta_description.length }))
+    if (fields.meta_description) {
+      setCharCount((c) => ({ ...c, meta: fields.meta_description!.length }))
     }
     setSlugManuallyEdited(true)
     setImportJson('')
     setImportOpen(false)
-    setImportMessage({ type: 'success', text: `✓ ${count} field${count === 1 ? '' : 's'} imported` })
+
+    if (productCount && productCount > 0) {
+      setImportMessage({
+        type: 'success',
+        text: `✓ Full article imported — ${productCount} product${productCount === 1 ? '' : 's'} detected. Click Publish to render and go live.`,
+      })
+    } else {
+      setImportMessage({
+        type: 'success',
+        text: `✓ ${count} field${count === 1 ? '' : 's'} imported`,
+      })
+    }
   }
+
+  const hasContent = Boolean(form.content_html.trim() || form.import_json)
 
   const inputClass =
     'w-full bg-white/[0.04] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-white/25 focus:outline-none focus:border-amber-400/50 transition-colors'
@@ -318,7 +283,7 @@ export default function ArticleForm({
                 setImportJson(e.target.value)
                 if (importMessage) setImportMessage(null)
               }}
-              placeholder='Paste JSON with title, slug, meta_description, template_type, category, topic…'
+              placeholder='Paste JSON with title, slug, meta_description, template_type, category, primary_topic, products…'
               rows={6}
               className={`${inputClass} font-mono text-xs leading-relaxed`}
             />
@@ -584,7 +549,7 @@ export default function ArticleForm({
         <button
           type="button"
           onClick={() => onSubmit({ ...form, status: 'review' }, 'submit-review')}
-          disabled={isLoading || !form.title || !form.slug || !form.content_html || slugTaken}
+          disabled={isLoading || !form.title || !form.slug || !hasContent || slugTaken}
           className="px-5 py-2.5 rounded-lg border border-amber-400/30 text-amber-400 text-sm hover:bg-amber-400/10 transition-colors disabled:opacity-30"
         >
           Submit for Review
@@ -594,10 +559,14 @@ export default function ArticleForm({
           <button
             type="button"
             onClick={() => onSubmit({ ...form, status: 'published' }, 'publish')}
-            disabled={isLoading || !form.title || !form.slug || !form.content_html || slugTaken}
+            disabled={isLoading || !form.title || !form.slug || !hasContent || slugTaken}
             className="px-5 py-2.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-semibold text-sm transition-colors disabled:opacity-30"
           >
-            {isLoading ? 'Hydrating products…' : 'Publish Now'}
+            {isLoading
+              ? form.import_json
+                ? 'Rendering & hydrating…'
+                : 'Hydrating products…'
+              : 'Publish Now'}
           </button>
         )}
       </div>
