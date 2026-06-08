@@ -12,6 +12,21 @@ export type GuideArticleSegments = {
   bodyHtml: string
 }
 
+export type GuideBodySections = {
+  quickTips: string
+  products: string
+  whatToLookFor: string
+  whoShouldSkip: string
+  community: string
+  faq: string
+  buyingGuide: string
+  other: string
+}
+
+export type PreparedGuideArticle = GuideArticleSegments & {
+  bodySections: GuideBodySections
+}
+
 const PRODUCT_H3_RE = /<h3\b[^>]*>([\s\S]*?)<\/h3>/gi
 const TABLE_RE = /<table\b[\s\S]*?<\/table>/i
 const AFFILIATE_LINK_RE =
@@ -80,6 +95,142 @@ function findProductUrl(title: string, products: GuideProduct[], fallbackHref: s
   return match?.affiliate_url ?? fallbackHref
 }
 
+function findProductUrlByIndex(index: number, products: GuideProduct[], fallbackHref: string): string {
+  const ranked = products[index]
+  return ranked?.affiliate_url ?? fallbackHref
+}
+
+function productHeadingHtml(
+  id: string,
+  headingText: string,
+  productUrl: string,
+): string {
+  const safeUrl = productUrl.replace(/"/g, '&quot;')
+  return `<h2 id="${id}"><a href="${safeUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>`
+}
+
+function linkifyProductHeadings(html: string, products: GuideProduct[]): string {
+  return html.replace(
+    /<h2\b([^>]*)\bid="([^"]*)"([^>]*)>([\s\S]*?)<\/h2>(\s*<div class="product-review")/gi,
+    (full, pre, id, post, content, after) => {
+      if (/<a\b/i.test(content)) return full
+      const headingText = stripHtml(content)
+      const productIndex = /^product-(\d+)$/.exec(id)?.[1]
+      const idx = productIndex ? Number(productIndex) - 1 : -1
+      const url =
+        idx >= 0
+          ? findProductUrlByIndex(idx, products, '#')
+          : findProductUrl(headingText.split('—')[0].trim(), products, '#')
+      return `${productHeadingHtml(id, content.trim(), url)}${after}`
+    },
+  )
+}
+
+function limitReviewBodyParagraphs(html: string): string {
+  const reviewRe =
+    /(<div class="review-body">)([\s\S]*?)(<\/div>\s*<div class="review-cta">)/gi
+  return html.replace(reviewRe, (_full, open, body, close) => {
+    const paragraphs = body.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
+    if (paragraphs.length <= 2) return `${open}${body}${close}`
+    const rest = body.replace(/<p\b[\s\S]*?<\/p>/gi, '')
+    return `${open}${paragraphs.slice(0, 2).join('\n')}${rest}${close}`
+  })
+}
+
+function splitIntroParagraphs(introHtml: string): { intro: string; overflow: string } {
+  const trimmed = introHtml.trim()
+  if (!trimmed) return { intro: '', overflow: '' }
+
+  let paragraphs = trimmed.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
+  if (paragraphs.length === 0) {
+    paragraphs = trimmed
+      .split(/\n\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p>${p}</p>`)
+  }
+
+  const introParas = paragraphs.slice(0, 2).map((p) =>
+    p.replace(/\bclass="[^"]*"/, '').replace(/<p\b/, '<p class="intro-paragraph"'),
+  )
+  const overflowParas = paragraphs.slice(2)
+
+  return {
+    intro: introParas.join('\n'),
+    overflow: overflowParas.join('\n'),
+  }
+}
+
+function formatIntroHtml(introHtml: string): string {
+  return splitIntroParagraphs(introHtml).intro
+}
+
+function classifySectionHeading(headingText: string, h2Id: string, chunk: string): keyof GuideBodySections {
+  const lower = headingText.toLowerCase()
+  if (/quick tips/.test(lower)) return 'quickTips'
+  if (/what to look for/.test(lower)) return 'whatToLookFor'
+  if (/who should skip/.test(lower)) return 'whoShouldSkip'
+  if (/community/.test(lower)) return 'community'
+  if (/faq|frequently asked/.test(lower)) return 'faq'
+  if (/buying guide/.test(lower)) return 'buyingGuide'
+  if (/^product-\d+$/.test(h2Id) || /<div class="product-review"/.test(chunk)) return 'products'
+  return 'other'
+}
+
+export function parseGuideBodySections(bodyHtml: string): GuideBodySections {
+  const sections: GuideBodySections = {
+    quickTips: '',
+    products: '',
+    whatToLookFor: '',
+    whoShouldSkip: '',
+    community: '',
+    faq: '',
+    buyingGuide: '',
+    other: '',
+  }
+
+  const trimmed = bodyHtml.trim()
+  if (!trimmed) return sections
+
+  const chunks = trimmed.split(/(?=<h2\b)/i).filter(Boolean)
+  const productParts: string[] = []
+
+  for (const chunk of chunks) {
+    const h2Match = chunk.match(/^<h2\b([^>]*)>([\s\S]*?)<\/h2>/i)
+    if (!h2Match) {
+      sections.other += chunk
+      continue
+    }
+
+    const attrs = h2Match[1] ?? ''
+    const idMatch = attrs.match(/\bid="([^"]*)"/i)
+    const h2Id = idMatch?.[1] ?? ''
+    const headingText = stripHtml(h2Match[2])
+    const kind = classifySectionHeading(headingText, h2Id, chunk)
+
+    if (kind === 'products') {
+      productParts.push(chunk)
+      continue
+    }
+
+    sections[kind] += chunk
+  }
+
+  sections.products = productParts.join('\n')
+
+  if (
+    sections.other.trim() &&
+    !sections.buyingGuide.trim() &&
+    /<p\b/i.test(sections.other) &&
+    !/<h2\b/i.test(sections.other)
+  ) {
+    sections.buyingGuide = sections.other.trim()
+    sections.other = ''
+  }
+
+  return sections
+}
+
 function awardBadgeClass(index: number): string {
   if (index === 0) return 'gold'
   if (index === 2) return 'value'
@@ -119,6 +270,9 @@ function buildProductReviewCard(
     .trim()
 
   const paragraphs = bodyHtml.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
+  if (paragraphs.length > 2) {
+    bodyHtml = paragraphs.slice(0, 2).join('\n')
+  }
   let bottomLine = ''
   if (paragraphs.length > 0) {
     const last = paragraphs[paragraphs.length - 1]
@@ -149,8 +303,8 @@ function buildProductReviewCard(
     ? `<img src="${imageUrl}" alt="${name}" />`
     : `<span class="product-image-placeholder">${name}</span>`
 
-  return `<h2 id="${id}">${name}${tagline ? ` — ${tagline}` : ''}</h2>
-<div class="product-review">
+  return productHeadingHtml(id, `${name}${tagline ? ` — ${tagline}` : ''}`, productUrl) +
+`<div class="product-review">
   <div class="product-review-header">
     <div class="product-image">
       <span class="award-badge${badgeClass ? ` ${badgeClass}` : ''}">${badgeLabel}</span>
@@ -231,7 +385,7 @@ function transformProductSections(html: string, products: GuideProduct[]): strin
 }
 
 function markLeadParagraph(html: string): string {
-  return html.replace(/<p\b([^>]*)>/, '<p class="lead"$1>')
+  return html
 }
 
 function wrapComparisonTable(html: string): string {
@@ -282,7 +436,7 @@ export function segmentGuideArticleHtml(html: string): GuideArticleSegments {
   const bodyHtml = firstH2 === -1 ? '' : working.slice(firstH2)
 
   return {
-    introHtml: markLeadParagraph(introHtml.trim()),
+    introHtml: formatIntroHtml(introHtml.trim()),
     comparisonTableHtml,
     bodyHtml: bodyHtml.trim(),
   }
@@ -291,7 +445,7 @@ export function segmentGuideArticleHtml(html: string): GuideArticleSegments {
 export function prepareGuideArticleHtml(
   rawHtml: string,
   products: GuideProduct[] = [],
-): GuideArticleSegments {
+): PreparedGuideArticle {
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
   html = injectReviewCardImages(
@@ -307,16 +461,37 @@ export function prepareGuideArticleHtml(
     segments.bodyHtml = transformProductSections(segments.bodyHtml, products)
     segments.bodyHtml = styleAffiliateLinks(segments.bodyHtml)
   } else if (!segments.introHtml && segments.bodyHtml) {
-    segments.introHtml = markLeadParagraph(
-      (segments.bodyHtml.match(/^([\s\S]*?)(?=<h2\b)/i)?.[1] ?? '').trim(),
-    )
+    const leading = (segments.bodyHtml.match(/^([\s\S]*?)(?=<h2\b)/i)?.[1] ?? '').trim()
+    const { intro, overflow } = splitIntroParagraphs(leading)
+    segments.introHtml = intro
+    if (overflow) {
+      segments.bodyHtml = `${overflow}\n${segments.bodyHtml.replace(/^([\s\S]*?)(?=<h2\b)/i, '').trim()}`
+    } else {
+      segments.bodyHtml = segments.bodyHtml.replace(/^([\s\S]*?)(?=<h2\b)/i, '').trim()
+    }
   }
+
+  segments.bodyHtml = linkifyProductHeadings(segments.bodyHtml, products)
+  segments.bodyHtml = limitReviewBodyParagraphs(segments.bodyHtml)
 
   if (segments.comparisonTableHtml) {
     segments.comparisonTableHtml = wrapComparisonTable(segments.comparisonTableHtml)
   }
 
-  return segments
+  const { intro: formattedIntro, overflow: introOverflow } = splitIntroParagraphs(
+    segments.introHtml,
+  )
+  segments.introHtml = formattedIntro
+
+  const bodySections = parseGuideBodySections(segments.bodyHtml)
+  if (introOverflow) {
+    bodySections.buyingGuide = `${introOverflow}\n${bodySections.buyingGuide}`.trim()
+  }
+
+  return {
+    ...segments,
+    bodySections,
+  }
 }
 
 export function estimateReadMinutes(html: string): number {

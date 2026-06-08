@@ -1,5 +1,5 @@
 /** Fallback when site URL env is unset. */
-const DEFAULT_SITE_URL = 'https://outdoordeals.com'
+const DEFAULT_SITE_URL = 'https://gearandsteer.com'
 
 function normalizeSiteOrigin(raw: string | undefined): string {
   const trimmed = raw?.trim().replace(/\/$/, '')
@@ -12,7 +12,9 @@ function resolveSiteOrigin(): string {
   }
   if (typeof process !== 'undefined' && process.env) {
     const fromNode =
-      process.env.NEXT_PUBLIC_SITE_URL ?? process.env.VITE_SITE_URL
+      process.env.SITE_URL ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      process.env.VITE_SITE_URL
     if (fromNode) return normalizeSiteOrigin(fromNode)
   }
   return DEFAULT_SITE_URL

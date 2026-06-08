@@ -1,20 +1,20 @@
+'use client'
+
 import type { GuideProduct } from '@/lib/articles-server'
 
 const PICK_LABELS = ['Best for Reliability', 'Best for Versatility', 'Best Value']
 
 type QuickPicksProps = {
   products: GuideProduct[]
-  title?: string
 }
 
-export default function QuickPicks({ products, title }: QuickPicksProps) {
+export default function QuickPicks({ products }: QuickPicksProps) {
   const picks = products.slice(0, 3)
   if (picks.length === 0) return null
 
   return (
     <div className="quick-picks">
-      <div className="quick-picks-header">Our Picks At A Glance</div>
-      <h3 className="quick-picks-title">{title ?? 'Top picks from this guide'}</h3>
+      <h3 className="quick-picks-title">Quick Picks — In Case You&apos;ve Already Decided</h3>
       <div className="picks-grid">
         {picks.map((product, index) => {
           const pillStyle =

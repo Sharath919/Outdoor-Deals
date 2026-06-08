@@ -34,11 +34,14 @@ function renderBodyContent(body: string): string {
     if (!text) return ''
     return text
       .split(/\n\n+/)
+      .slice(0, 2)
       .map((p) => `<p>${escapeHtml(p)}</p>`)
       .join('\n')
   }
 
-  return renderMarkdown(trimmed)
+  const mdHtml = renderMarkdown(trimmed)
+  const paragraphs = mdHtml.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
+  return paragraphs.slice(0, 2).join('\n')
 }
 
 function awardClass(color?: string): string {
@@ -149,9 +152,11 @@ export function renderProductReview(product: HydratedProduct, index: number): st
   const prosHtml = (product.pros ?? []).map((p) => `<li>${escapeHtml(p)}</li>`).join('')
   const consHtml = (product.cons ?? []).map((c) => `<li>${escapeHtml(c)}</li>`).join('')
   const bodyHtml = product.body ? renderBodyContent(product.body) : ''
+  const headingText = `${escapeHtml(product.name)} — ${escapeHtml(product.tagline || product.best_for || '')}`
+  const affiliateUrl = escapeAttr(product.affiliate_url)
 
   return `
-    <h2 id="product-${index + 1}">${escapeHtml(product.name)} — ${escapeHtml(product.tagline || product.best_for || '')}</h2>
+    <h2 id="product-${index + 1}"><a href="${affiliateUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>
 
     <div class="product-review">
       <div class="product-review-header">

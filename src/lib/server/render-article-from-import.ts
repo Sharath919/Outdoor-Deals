@@ -12,15 +12,15 @@ function escapeHtml(s: string): string {
     .replaceAll('"', '&quot;')
 }
 
-function paragraphsToHtml(text: string | undefined | null): string {
+function paragraphsToHtml(text: string | undefined | null, maxParagraphs?: number): string {
   const trimmed = String(text ?? '').trim()
   if (!trimmed) return ''
-  return trimmed
+  const parts = trimmed
     .split(/\n\n+/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p)}</p>`)
-    .join('\n')
+  const limited = maxParagraphs != null ? parts.slice(0, maxParagraphs) : parts
+  return limited.map((p) => `<p>${escapeHtml(p)}</p>`).join('\n')
 }
 
 function awardClass(color?: string): string {
@@ -28,6 +28,15 @@ function awardClass(color?: string): string {
   if (color === 'value') return 'value'
   if (color === 'versatile') return 'versatile'
   return color?.trim() ?? ''
+}
+
+function productHeadingLink(
+  headingText: string,
+  affiliateUrl: string,
+  id: string,
+): string {
+  const safeUrl = affiliateUrl.replace(/"/g, '&quot;')
+  return `<h2 id="${id}"><a href="${safeUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>`
 }
 
 function renderProduct(
@@ -43,7 +52,7 @@ function renderProduct(
   const priceRange = String(product.price_range ?? 'See on Amazon').trim()
   const pros = Array.isArray(product.pros) ? product.pros.map(String) : []
   const cons = Array.isArray(product.cons) ? product.cons.map(String) : []
-  const bodyHtml = paragraphsToHtml(String(product.body ?? ''))
+  const bodyHtml = paragraphsToHtml(String(product.body ?? ''), 2)
   const bottomLine = String(product.bottom_line ?? '').trim()
 
   const specs = product.specs as Record<string, string> | undefined
@@ -64,8 +73,9 @@ function renderProduct(
     : '#'
 
   const headingSuffix = awardLabel ? ` — ${escapeHtml(awardLabel)}` : ''
+  const headingText = `${escapeHtml(name)}${headingSuffix}`
 
-  return `<h2 id="product-${index + 1}">${escapeHtml(name)}${headingSuffix}</h2>
+  return `${productHeadingLink(headingText, affiliateUrl, `product-${index + 1}`)}
 <div class="product-review">
   <div class="product-review-header">
     <div class="product-image-wrap">
@@ -123,7 +133,7 @@ function renderFaq(faq: unknown): string {
       const q = String(row.q ?? row.question ?? '').trim()
       const a = String(row.a ?? row.answer ?? '').trim()
       if (!q && !a) return ''
-      return `<h3>${escapeHtml(q)}</h3>\n<p>${escapeHtml(a)}</p>`
+      return `<h3>${escapeHtml(q)}</h3>\n${paragraphsToHtml(a)}`
     })
     .filter(Boolean)
     .join('\n')
@@ -150,9 +160,6 @@ export function renderArticleFromImportJson(
   const intro = paragraphsToHtml(String(importJson.intro ?? ''))
   if (intro) parts.push(intro)
 
-  const buyingGuide = paragraphsToHtml(String(importJson.buying_guide ?? ''))
-  if (buyingGuide) parts.push(buyingGuide)
-
   const tipsHtml = renderTips(importJson.tips)
   if (tipsHtml) parts.push(tipsHtml)
 
@@ -172,16 +179,21 @@ export function renderArticleFromImportJson(
 
   const whoShouldSkip = String(importJson.who_should_skip ?? '').trim()
   if (whoShouldSkip) {
-    parts.push(`<h2>Who Should Skip This</h2>\n<p>${escapeHtml(whoShouldSkip)}</p>`)
+    parts.push(`<h2>Who Should Skip This</h2>\n${paragraphsToHtml(whoShouldSkip)}`)
   }
 
   const community = String(importJson.community ?? '').trim()
   if (community) {
-    parts.push(`<h2>What the Community Actually Uses</h2>\n<p>${escapeHtml(community)}</p>`)
+    parts.push(`<h2>What the Community Actually Uses</h2>\n${paragraphsToHtml(community)}`)
   }
 
   const faqHtml = renderFaq(importJson.faq)
   if (faqHtml) parts.push(faqHtml)
+
+  const buyingGuide = paragraphsToHtml(String(importJson.buying_guide ?? ''))
+  if (buyingGuide) {
+    parts.push(`<h2>Buying Guide</h2>\n${buyingGuide}`)
+  }
 
   return parts.filter(Boolean).join('\n\n')
 }

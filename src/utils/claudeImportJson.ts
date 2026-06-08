@@ -78,6 +78,17 @@ export function parseClaudeImportJson(raw: string): ClaudeImportParseResult {
   }
 }
 
+export function importMetadataFromJson(
+  importJson: Record<string, unknown>,
+): { reddit_welcome?: string; display_name?: string } {
+  const meta: { reddit_welcome?: string; display_name?: string } = {}
+  const welcome = String(importJson.reddit_welcome ?? '').trim()
+  if (welcome) meta.reddit_welcome = welcome
+  const displayName = String(importJson.display_name ?? '').trim()
+  if (displayName) meta.display_name = displayName
+  return meta
+}
+
 export function productSpecsFromImportJson(
   importJson: Record<string, unknown>,
 ): ArticleProductSpec[] {

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import QuickPicks from '@/components/guide/QuickPicks'
+import RedditWelcome from '@/components/guide/RedditWelcome'
 import AuthorBio from '@/components/guide/AuthorBio'
 import {
   EDITORIAL_SITE_NAME,
@@ -15,11 +16,8 @@ import {
 import { renderCompareTable } from '@/lib/server/affiliate-pipeline/render'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import { SITE_URL } from '@/config/site'
-import {
-  authorInitials,
-  estimateReadMinutes,
-  prepareGuideArticleHtml,
-} from '@/utils/guideArticleHtml'
+import { authorInitials, prepareGuideArticleHtml } from '@/utils/guideArticleHtml'
+import { resolveAuthorDisplayName } from '@/utils/guideAuthor'
 import { guideProductsToHydrated } from '@/utils/guideProducts'
 
 export const revalidate = 3600
@@ -33,26 +31,40 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const article = await getPublishedArticleBySlug(slug)
   if (!article) return { title: 'Not found' }
+
+  const canonical = `${SITE_URL}/guides/${slug}`
+  const title = article.seo_title || article.title
+  const description = article.meta_description ?? undefined
+
   return {
-    title: article.seo_title || article.title,
-    description: article.meta_description ?? undefined,
-    alternates: { canonical: `${SITE_URL}/guides/${slug}` },
+    title,
+    description,
+    alternates: { canonical },
     openGraph: {
-      title: article.seo_title || article.title,
-      description: article.meta_description ?? undefined,
-      url: `${SITE_URL}/guides/${slug}`,
+      title,
+      description,
+      url: canonical,
       images: article.hero_image_url ? [{ url: article.hero_image_url }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+    other: {
+      'twitter:url': canonical,
     },
   }
 }
 
-function formatPublishedDate(iso: string | null | undefined) {
-  if (!iso) return null
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  })
+function ArticleSection({ html }: { html: string }) {
+  if (!html.trim()) return null
+  return (
+    <div
+      className="article-content"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
 
 export default async function GuideArticlePage({
@@ -66,102 +78,56 @@ export default async function GuideArticlePage({
 
   const products = await getArticleProducts(article.id)
   const amazonConfig = await readAmazonAffiliateServerConfig()
-  const segments = prepareGuideArticleHtml(article.content_html || '', products)
+  const prepared = prepareGuideArticleHtml(article.content_html || '', products)
   const compareTableHtml =
     products.length > 0
       ? renderCompareTable(guideProductsToHydrated(products))
-      : segments.comparisonTableHtml
-  const publishedLabel = formatPublishedDate(article.published_at)
-  const readMinutes = estimateReadMinutes(article.content_html || '')
-  const authorName = article.author_name?.trim() || amazonConfig.authorName
+      : prepared.comparisonTableHtml
+  const authorName = resolveAuthorDisplayName(article)
   const disclosureText = amazonConfig.disclosureText
   const categoryLabel = outdoorCategoryLabel(article.category)
-  const eyebrow = categoryLabel ? `${categoryLabel} · Gear Guide` : 'Outdoor Gear · Guide'
-  const productCount = products.length || undefined
+  const eyebrow = categoryLabel ? `${categoryLabel} · Guide` : 'Outdoor Gear · Guide'
+  const { bodySections } = prepared
 
   return (
     <div className="guide-page">
       <SiteHeader variant="guide" />
 
-      <div className="breadcrumb">
-        <Link href="/guides">Guides</Link>
-        <span>/</span>
-        {categoryLabel && (
-          <>
-            <span>{categoryLabel}</span>
-            <span>/</span>
-          </>
-        )}
-        {article.title.split(':')[0]}
-      </div>
-
       <header className="article-header">
         <span className="eyebrow">{eyebrow}</span>
         <h1 className="article-title">{article.title}</h1>
-        {article.meta_description && <p className="deck">{article.meta_description}</p>}
-        <div className="byline">
-          <div className="avatar">{authorInitials(authorName)}</div>
-          <div className="byline-text">
-            <strong>By {authorName}</strong>
-            <div className="byline-meta">
-              {publishedLabel && <span>Updated {publishedLabel}</span>}
-              {publishedLabel && <span>·</span>}
-              <span>{readMinutes} min read</span>
-              {productCount != null && productCount > 0 && (
-                <>
-                  <span>·</span>
-                  <span>{productCount} products reviewed</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
       </header>
 
-      {article.hero_image_url && (
-        <div className="hero-image">
-          <div className="hero-image-inner">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={article.hero_image_url} alt="" />
-          </div>
-        </div>
-      )}
+      <RedditWelcome message={article.reddit_welcome} />
 
       <article className="article-body">
-        <div className="disclosure">
+        {prepared.introHtml && <ArticleSection html={prepared.introHtml} />}
+
+        {compareTableHtml && (
+          <div className="compare-full-bleed">
+            <div
+              className="article-content"
+              dangerouslySetInnerHTML={{ __html: compareTableHtml }}
+            />
+          </div>
+        )}
+
+        <ArticleSection html={bodySections.quickTips} />
+        <ArticleSection html={bodySections.products} />
+        <ArticleSection html={bodySections.whatToLookFor} />
+        <ArticleSection html={bodySections.whoShouldSkip} />
+        <ArticleSection html={bodySections.community} />
+
+        <QuickPicks products={products} />
+
+        <ArticleSection html={bodySections.faq} />
+        <ArticleSection html={bodySections.buyingGuide} />
+        <ArticleSection html={bodySections.other} />
+
+        <div className="disclosure disclosure--footer">
           <strong>Affiliate disclosure:</strong> {amazonConfig.siteName} tests gear on real trips.{' '}
           {disclosureText}
         </div>
-
-        {segments.introHtml && (
-          <div
-            className="article-content"
-            dangerouslySetInnerHTML={{ __html: segments.introHtml }}
-          />
-        )}
-
-        <QuickPicks
-          products={products}
-          title={
-            products.length >= 3
-              ? `${products.length} picks worth your money`
-              : undefined
-          }
-        />
-
-        {compareTableHtml && (
-          <div
-            className="article-content"
-            dangerouslySetInnerHTML={{ __html: compareTableHtml }}
-          />
-        )}
-
-        {segments.bodyHtml && (
-          <div
-            className="article-content"
-            dangerouslySetInnerHTML={{ __html: segments.bodyHtml }}
-          />
-        )}
 
         <AuthorBio authorName={authorName} initials={authorInitials(authorName)} />
       </article>

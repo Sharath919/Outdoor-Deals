@@ -7,6 +7,7 @@ import {
   extractProductSpecsFromImportJson,
   renderArticleFromImportJson,
 } from '@/lib/server/render-article-from-import'
+import { importMetadataFromJson } from '@/utils/claudeImportJson'
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -79,12 +80,15 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
       associateTag: amazonConfig.associateTag,
     })
     const productSpecs = extractProductSpecsFromImportJson(row.import_json)
+    const importMeta = importMetadataFromJson(row.import_json)
 
     const { error: renderError } = await supabase
       .from('articles')
       .update({
         content_html: renderedHtml,
         product_specs: productSpecs.length ? productSpecs : null,
+        reddit_welcome: importMeta.reddit_welcome ?? null,
+        display_name: importMeta.display_name ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', articleId)

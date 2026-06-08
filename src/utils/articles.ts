@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Article, ArticleFormData } from '@/types/article'
 import { stripBrokenArticleImages } from '@/utils/articleContent'
-import { productSpecsFromImportJson } from '@/utils/claudeImportJson'
+import { productSpecsFromImportJson, importMetadataFromJson } from '@/utils/claudeImportJson'
 
 function emptyToNull(value: string): string | null {
   const trimmed = value.trim()
@@ -15,6 +15,7 @@ function formToInsert(
 ) {
   const importJson = formData.import_json ?? null
   const productSpecs = importJson ? productSpecsFromImportJson(importJson) : null
+  const importMeta = importJson ? importMetadataFromJson(importJson) : {}
 
   return {
     title: formData.title.trim(),
@@ -31,6 +32,8 @@ function formToInsert(
     status: formData.status,
     author_id: authorId,
     author_name: authorName,
+    reddit_welcome: importMeta.reddit_welcome ?? null,
+    display_name: importMeta.display_name ?? null,
     published_at: formData.status === 'published' ? new Date().toISOString() : null,
     import_json: importJson,
     source: importJson ? 'manual_import' : 'pipeline',
@@ -72,6 +75,9 @@ function formToUpdate(formData: Partial<ArticleFormData>) {
       updates.source = 'manual_import'
       const specs = productSpecsFromImportJson(importJson)
       if (specs.length) updates.product_specs = specs
+      const importMeta = importMetadataFromJson(importJson)
+      if (importMeta.reddit_welcome) updates.reddit_welcome = importMeta.reddit_welcome
+      if (importMeta.display_name) updates.display_name = importMeta.display_name
     }
   }
 

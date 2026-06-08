@@ -30,6 +30,10 @@ export interface Article {
   cta_question: string | null
   status: ArticleStatus
   author_name: string | null
+  /** Public byline name — defaults to GearAndSteer Team when unset. */
+  display_name?: string | null
+  /** Shown when utm_source=reddit — also stored in import_json on import. */
+  reddit_welcome?: string | null
   author_id: string | null
   seo_title: string | null
   canonical_url: string | null

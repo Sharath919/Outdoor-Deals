@@ -26,6 +26,7 @@ export function readPublicEnvFromProcess(): OutdoorDealsPublicEnv {
       ''
     ).trim(),
     siteUrl: (
+      process.env.SITE_URL ??
       process.env.NEXT_PUBLIC_SITE_URL ??
       process.env.VITE_SITE_URL ??
       ''
