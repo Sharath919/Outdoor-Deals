@@ -1,6 +1,12 @@
 import { buildAffiliateProductUrl } from '@/utils/amazonAffiliateConfig'
 import type { ArticleProductSpec } from '@/lib/server/affiliate-pipeline/types'
 import { productSpecsFromImportJson } from '@/utils/claudeImportJson'
+import {
+  PRODUCT_CTA_BUTTON_HTML,
+  PRODUCT_PRICE_LABEL,
+  productHeadingBlockHtml,
+  textToSentenceParagraphsHtml,
+} from '@/utils/guideProductCopy'
 
 const PLACEHOLDER_IMAGE = 'PLACEHOLDER'
 
@@ -12,15 +18,8 @@ function escapeHtml(s: string): string {
     .replaceAll('"', '&quot;')
 }
 
-function paragraphsToHtml(text: string | undefined | null, maxParagraphs?: number): string {
-  const trimmed = String(text ?? '').trim()
-  if (!trimmed) return ''
-  const parts = trimmed
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-  const limited = maxParagraphs != null ? parts.slice(0, maxParagraphs) : parts
-  return limited.map((p) => `<p>${escapeHtml(p)}</p>`).join('\n')
+function paragraphsToHtml(text: string | undefined | null): string {
+  return textToSentenceParagraphsHtml(String(text ?? ''))
 }
 
 function awardClass(color?: string): string {
@@ -31,12 +30,17 @@ function awardClass(color?: string): string {
 }
 
 function productHeadingLink(
-  headingText: string,
+  name: string,
+  tagline: string,
   affiliateUrl: string,
   id: string,
 ): string {
-  const safeUrl = affiliateUrl.replace(/"/g, '&quot;')
-  return `<h2 id="${id}"><a href="${safeUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>`
+  return productHeadingBlockHtml({
+    id,
+    name,
+    tagline,
+    affiliateUrl,
+  })
 }
 
 function renderProduct(
@@ -52,7 +56,7 @@ function renderProduct(
   const priceRange = String(product.price_range ?? 'See on Amazon').trim()
   const pros = Array.isArray(product.pros) ? product.pros.map(String) : []
   const cons = Array.isArray(product.cons) ? product.cons.map(String) : []
-  const bodyHtml = paragraphsToHtml(String(product.body ?? ''), 2)
+  const bodyHtml = textToSentenceParagraphsHtml(String(product.body ?? ''))
   const bottomLine = String(product.bottom_line ?? '').trim()
 
   const specs = product.specs as Record<string, string> | undefined
@@ -72,10 +76,9 @@ function renderProduct(
     ? buildAffiliateProductUrl(asin, associateTag)
     : '#'
 
-  const headingSuffix = awardLabel ? ` — ${escapeHtml(awardLabel)}` : ''
-  const headingText = `${escapeHtml(name)}${headingSuffix}`
+  const headingTagline = tagline || awardLabel
 
-  return `${productHeadingLink(headingText, affiliateUrl, `product-${index + 1}`)}
+  return `${productHeadingLink(name, headingTagline, affiliateUrl, `product-${index + 1}`)}
 <div class="product-review">
   <div class="product-review-header">
     <div class="product-image-wrap">
@@ -115,11 +118,11 @@ function renderProduct(
   </div>
   <div class="review-cta">
     <div class="price-display">
-      <span class="price-label">Price at time of writing</span>
+      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
       <span class="price-value">${escapeHtml(priceRange)}</span>
     </div>
     <a href="${affiliateUrl.replace(/"/g, '&quot;')}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
-      <span class="btn-icon">→</span> Check ${escapeHtml(name)} on Amazon
+      ${PRODUCT_CTA_BUTTON_HTML}
     </a>
   </div>
 </div>`
@@ -133,7 +136,7 @@ function renderFaq(faq: unknown): string {
       const q = String(row.q ?? row.question ?? '').trim()
       const a = String(row.a ?? row.answer ?? '').trim()
       if (!q && !a) return ''
-      return `<h3>${escapeHtml(q)}</h3>\n${paragraphsToHtml(a)}`
+      return `<h3>${escapeHtml(q)}</h3>\n<p>${escapeHtml(a)}</p>`
     })
     .filter(Boolean)
     .join('\n')
@@ -157,7 +160,14 @@ export function renderArticleFromImportJson(
   const associateTag = options?.associateTag?.trim() ?? ''
   const parts: string[] = []
 
-  const intro = paragraphsToHtml(String(importJson.intro ?? ''))
+  const intro = String(importJson.intro ?? '')
+    .trim()
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => `<p>${escapeHtml(p)}</p>`)
+    .join('\n')
   if (intro) parts.push(intro)
 
   const tipsHtml = renderTips(importJson.tips)

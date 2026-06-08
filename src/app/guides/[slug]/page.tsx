@@ -134,7 +134,7 @@ export default async function GuideArticlePage({
 
       <footer className="guide-footer">
         <Link href="/" className="logo">
-          Outdoor<span>Deals</span>
+          Gear<span>AndSteer</span>
         </Link>
         <p>Independent outdoor gear guides. © {new Date().getFullYear()} {EDITORIAL_SITE_NAME}.</p>
       </footer>

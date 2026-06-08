@@ -43,7 +43,7 @@ export default async function GuidesIndexPage() {
         )}
       </main>
       <footer className="guide-footer">
-        <Link href="/" className="logo">Outdoor<span>Deals</span></Link>
+        <Link href="/" className="logo">Gear<span>AndSteer</span></Link>
         <p>Independent outdoor gear guides.</p>
       </footer>
     </div>

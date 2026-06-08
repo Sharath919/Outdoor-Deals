@@ -2,11 +2,7 @@ import { LEGACY_SECTION_BREAK_MARKER } from './sectionBreak'
 import type { AffiliateCtaPlacement } from '@/types/affiliateCta'
 import type { CtaSlot1Type } from '@/types/affiliateCta'
 
-const H2_DIVIDER = `<div class="article-h2-divider flex items-center gap-4 my-10" aria-hidden="true">
-  <div class="flex-1 h-px bg-white/[0.08]"></div>
-  <span class="text-amber-400/40 text-sm">✦</span>
-  <div class="flex-1 h-px bg-white/[0.08]"></div>
-</div>`
+const H2_DIVIDER = `<div class="article-section-accent-divider" aria-hidden="true"></div>`
 
 /** <!-- SECTION BREAK --> or <!-- SECTION BREAK: card --> or <!-- SECTION BREAK: https://... --> */
 const SECTION_BREAK_RE = /<!--\s*SECTION BREAK(?:\s*:\s*([^>]*?))?\s*-->/gi

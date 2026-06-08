@@ -36,11 +36,11 @@ export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
 > = {
   associateTag: '',
   marketplace: 'www.amazon.com',
-  siteName: 'Outdoor Deals',
-  siteUrl: 'https://outdoordeals.com',
+  siteName: 'GearAndSteer',
+  siteUrl: 'https://gearandsteer.com',
   accentColor: '#2D4A2B',
-  authorName: 'Outdoor Deals Team',
-  authorInitials: 'OD',
+  authorName: 'GearAndSteer Team',
+  authorInitials: 'GS',
   disclosureText:
     'We may earn a commission from qualifying purchases, but our recommendations are independent.',
 }

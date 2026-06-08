@@ -21,7 +21,7 @@
   --gold: #b89968;
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Manrope', -apple-system, system-ui, sans-serif;
-  --container: 680px;
+  --container: 780px;
   --container-wide: 1100px;
 
   min-height: 100vh;
@@ -303,9 +303,19 @@
 }
 
 .guide-page .article-content p {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   color: var(--ink);
   line-height: 1.7;
+  max-width: var(--container);
+}
+
+.guide-page .product-tagline-sub {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  font-weight: 400;
   max-width: var(--container);
 }
 
@@ -485,6 +495,7 @@
   cursor: pointer;
   text-align: center;
   width: 100%;
+  white-space: nowrap;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -972,7 +983,7 @@
 .guide-page .review-body p {
   font-size: 17px;
   line-height: 1.7;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   max-width: 42rem;
 }
 
@@ -1136,6 +1147,14 @@
 
 .guide-page .guide-footer a {
   color: rgba(255, 255, 255, 0.8);
+}
+
+.guide-page .article-section-accent-divider {
+  width: 60px;
+  height: 1px;
+  background: var(--accent);
+  margin: 2rem 0;
+  border: none;
 }
 
 /* Hide legacy limansa elements */

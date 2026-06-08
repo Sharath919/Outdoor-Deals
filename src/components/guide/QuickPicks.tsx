@@ -45,7 +45,7 @@ export default function QuickPicks({ products }: QuickPicksProps) {
                 target="_blank"
                 rel="noopener noreferrer sponsored"
               >
-                <span className="btn-icon">→</span> Check on Amazon
+                <span className="btn-icon">→</span> Check Price on Amazon
               </a>
             </div>
           )

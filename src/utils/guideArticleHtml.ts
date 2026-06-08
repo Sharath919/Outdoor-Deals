@@ -5,6 +5,15 @@ import {
 } from '@/lib/server/affiliate-pipeline/image-utils'
 import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
+import {
+  PRODUCT_CTA_BUTTON_HTML,
+  PRODUCT_PRICE_LABEL,
+  htmlToSentenceParagraphsHtml,
+  parseHeadingNameTagline,
+  productHeadingBlockHtml,
+  reformatSectionToSentenceParagraphs,
+  textToSentenceParagraphsHtml,
+} from '@/utils/guideProductCopy'
 
 export type GuideArticleSegments = {
   introHtml: string
@@ -102,39 +111,67 @@ function findProductUrlByIndex(index: number, products: GuideProduct[], fallback
 
 function productHeadingHtml(
   id: string,
-  headingText: string,
+  name: string,
+  tagline: string,
   productUrl: string,
 ): string {
-  const safeUrl = productUrl.replace(/"/g, '&quot;')
-  return `<h2 id="${id}"><a href="${safeUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>`
+  return productHeadingBlockHtml({ id, name, tagline, affiliateUrl: productUrl, escape: false })
 }
 
 function linkifyProductHeadings(html: string, products: GuideProduct[]): string {
   return html.replace(
-    /<h2\b([^>]*)\bid="([^"]*)"([^>]*)>([\s\S]*?)<\/h2>(\s*<div class="product-review")/gi,
-    (full, pre, id, post, content, after) => {
-      if (/<a\b/i.test(content)) return full
-      const headingText = stripHtml(content)
+    /<h2\b([^>]*)\bid="([^"]*)"([^>]*)>([\s\S]*?)<\/h2>(\s*(?:<p class="product-tagline-sub"[^>]*>[\s\S]*?<\/p>)?\s*)(<div class="product-review")/gi,
+    (_full, _pre, id, _post, content, taglineBlock, after) => {
       const productIndex = /^product-(\d+)$/.exec(id)?.[1]
       const idx = productIndex ? Number(productIndex) - 1 : -1
       const url =
         idx >= 0
           ? findProductUrlByIndex(idx, products, '#')
-          : findProductUrl(headingText.split('—')[0].trim(), products, '#')
-      return `${productHeadingHtml(id, content.trim(), url)}${after}`
+          : findProductUrl(parseHeadingNameTagline(stripHtml(content)).name, products, '#')
+
+      let name = ''
+      let tagline = ''
+      if (taglineBlock.trim()) {
+        const linkInner = content.match(/<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? content
+        name = parseHeadingNameTagline(stripHtml(linkInner)).name || stripHtml(linkInner)
+        tagline = stripHtml(
+          taglineBlock.match(/<p class="product-tagline-sub"[^>]*>([\s\S]*?)<\/p>/i)?.[1] ?? '',
+        )
+      } else {
+        const linkInner = content.match(/<a[^>]*>([\s\S]*?)<\/a>/i)?.[1] ?? content
+        const parsed = parseHeadingNameTagline(stripHtml(linkInner))
+        name = parsed.name || stripHtml(linkInner)
+        tagline = parsed.tagline || (idx >= 0 ? products[idx]?.tagline ?? '' : '')
+      }
+
+      if (!name && idx >= 0) name = products[idx]?.title ?? ''
+
+      return `${productHeadingHtml(id, name, tagline, url)}${after}`
     },
   )
 }
 
-function limitReviewBodyParagraphs(html: string): string {
+function reformatReviewBodyParagraphs(html: string): string {
   const reviewRe =
     /(<div class="review-body">)([\s\S]*?)(<\/div>\s*<div class="review-cta">)/gi
   return html.replace(reviewRe, (_full, open, body, close) => {
-    const paragraphs = body.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
-    if (paragraphs.length <= 2) return `${open}${body}${close}`
-    const rest = body.replace(/<p\b[\s\S]*?<\/p>/gi, '')
-    return `${open}${paragraphs.slice(0, 2).join('\n')}${rest}${close}`
+    const bottomLineMatch = body.match(/<div class="bottom-line">[\s\S]*?<\/div>/i)
+    const bottomLine = bottomLineMatch?.[0] ?? ''
+    const bodyWithoutBottom = bottomLine ? body.replace(bottomLine, '') : body
+    const reformatted = htmlToSentenceParagraphsHtml(bodyWithoutBottom)
+    return `${open}${reformatted}${bottomLine}${close}`
   })
+}
+
+function normalizeProductCtaButtons(html: string): string {
+  return html.replace(
+    /(<a\b[^>]*class="[^"]*\bbtn-large\b[^"]*"[^>]*>)([\s\S]*?)(<\/a>)/gi,
+    `$1${PRODUCT_CTA_BUTTON_HTML}$3`,
+  )
+}
+
+function normalizePriceLabels(html: string): string {
+  return html.replace(/Price at time of writing/gi, PRODUCT_PRICE_LABEL)
 }
 
 function splitIntroParagraphs(introHtml: string): { intro: string; overflow: string } {
@@ -261,7 +298,6 @@ function buildProductReviewCard(
     /<a\b[^>]*\bclass="affiliate-link"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i,
   )
   const affiliateHref = affiliateMatch?.[1] ?? '#'
-  const affiliateText = stripHtml(affiliateMatch?.[2] ?? `Check ${name} Price on Amazon`)
   const productUrl = findProductUrl(name, products, affiliateHref)
 
   let bodyHtml = sectionHtml
@@ -270,9 +306,6 @@ function buildProductReviewCard(
     .trim()
 
   const paragraphs = bodyHtml.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
-  if (paragraphs.length > 2) {
-    bodyHtml = paragraphs.slice(0, 2).join('\n')
-  }
   let bottomLine = ''
   if (paragraphs.length > 0) {
     const last = paragraphs[paragraphs.length - 1]
@@ -281,6 +314,9 @@ function buildProductReviewCard(
       bodyHtml = bodyHtml.replace(last, '')
     }
   }
+  const bodyText =
+    bodyHtml.match(/<p\b[\s\S]*?<\/p>/gi)?.map((p) => stripHtml(p)).join(' ') ?? stripHtml(bodyHtml)
+  bodyHtml = textToSentenceParagraphsHtml(bodyText)
 
   const priceSpec = specs.find((s) => /^price$/i.test(s.label))
   const badgeClass = awardBadgeClass(index)
@@ -303,7 +339,7 @@ function buildProductReviewCard(
     ? `<img src="${imageUrl}" alt="${name}" />`
     : `<span class="product-image-placeholder">${name}</span>`
 
-  return productHeadingHtml(id, `${name}${tagline ? ` — ${tagline}` : ''}`, productUrl) +
+  return productHeadingHtml(id, name, tagline, productUrl) +
 `<div class="product-review">
   <div class="product-review-header">
     <div class="product-image">
@@ -347,12 +383,15 @@ function buildProductReviewCard(
     ${
       priceSpec
         ? `<div class="price-display">
-      <span class="price-label">Price at time of writing</span>
+      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
       <span class="price-value">${priceSpec.value}</span>
     </div>`
-        : ''
+        : `<div class="price-display">
+      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
+      <span class="price-value">See on Amazon</span>
+    </div>`
     }
-    <a href="${productUrl}" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored"><span class="btn-icon">→</span> ${affiliateText}</a>
+    <a href="${productUrl}" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored">${PRODUCT_CTA_BUTTON_HTML}</a>
   </div>
 </div>`
 }
@@ -412,8 +451,8 @@ function wrapComparisonTable(html: string): string {
 function styleAffiliateLinks(html: string): string {
   return html.replace(
     AFFILIATE_LINK_RE,
-    (_full, _pre, _post, text) =>
-      `<a href="#" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored"><span class="btn-icon">→</span> ${stripHtml(text)}</a>`,
+    () =>
+      `<a href="#" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored">${PRODUCT_CTA_BUTTON_HTML}</a>`,
   )
 }
 
@@ -472,7 +511,9 @@ export function prepareGuideArticleHtml(
   }
 
   segments.bodyHtml = linkifyProductHeadings(segments.bodyHtml, products)
-  segments.bodyHtml = limitReviewBodyParagraphs(segments.bodyHtml)
+  segments.bodyHtml = reformatReviewBodyParagraphs(segments.bodyHtml)
+  segments.bodyHtml = normalizeProductCtaButtons(segments.bodyHtml)
+  segments.bodyHtml = normalizePriceLabels(segments.bodyHtml)
 
   if (segments.comparisonTableHtml) {
     segments.comparisonTableHtml = wrapComparisonTable(segments.comparisonTableHtml)
@@ -485,8 +526,24 @@ export function prepareGuideArticleHtml(
 
   const bodySections = parseGuideBodySections(segments.bodyHtml)
   if (introOverflow) {
-    bodySections.buyingGuide = `${introOverflow}\n${bodySections.buyingGuide}`.trim()
+    const overflowFormatted = htmlToSentenceParagraphsHtml(introOverflow)
+    if (bodySections.buyingGuide.trim()) {
+      bodySections.buyingGuide = bodySections.buyingGuide.replace(
+        /(<h2\b[^>]*>[\s\S]*?<\/h2>)/i,
+        `$1\n${overflowFormatted}\n`,
+      )
+    } else {
+      bodySections.buyingGuide = overflowFormatted
+    }
   }
+
+  bodySections.whatToLookFor = reformatSectionToSentenceParagraphs(bodySections.whatToLookFor)
+  bodySections.whoShouldSkip = reformatSectionToSentenceParagraphs(bodySections.whoShouldSkip)
+  bodySections.community = reformatSectionToSentenceParagraphs(bodySections.community)
+  bodySections.buyingGuide = reformatSectionToSentenceParagraphs(bodySections.buyingGuide)
+  bodySections.products = normalizePriceLabels(
+    normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
+  )
 
   return {
     ...segments,
@@ -502,7 +559,7 @@ export function estimateReadMinutes(html: string): number {
 
 export function authorInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return 'OD'
+  if (parts.length === 0) return 'GS'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }

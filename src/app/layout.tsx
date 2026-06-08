@@ -7,8 +7,8 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Outdoor Deals',
-    template: '%s | Outdoor Deals',
+    default: 'GearAndSteer',
+    template: '%s | GearAndSteer',
   },
   description: 'Outdoor gear guides, budget roundups, and smart product picks.',
 }

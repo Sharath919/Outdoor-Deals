@@ -1,5 +1,11 @@
 import { marked } from 'marked'
 import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
+import {
+  PRODUCT_CTA_BUTTON_HTML,
+  PRODUCT_PRICE_LABEL,
+  productHeadingBlockHtml,
+  textToSentenceParagraphsHtml,
+} from '@/utils/guideProductCopy'
 import { htmlParagraphsToText } from './product-parse-utils'
 import type { HydratedProduct, HydratedArticleSpec, PipelineRenderResult } from './types'
 
@@ -28,20 +34,15 @@ function renderBodyContent(body: string): string {
   const trimmed = body.trim()
   if (!trimmed) return ''
 
-  // Never run marked on HTML — it becomes escaped <pre><code> blocks (GFM)
   if (/[<]/.test(trimmed)) {
     const text = htmlParagraphsToText(trimmed)
     if (!text) return ''
-    return text
-      .split(/\n\n+/)
-      .slice(0, 2)
-      .map((p) => `<p>${escapeHtml(p)}</p>`)
-      .join('\n')
+    return textToSentenceParagraphsHtml(text)
   }
 
   const mdHtml = renderMarkdown(trimmed)
-  const paragraphs = mdHtml.match(/<p\b[\s\S]*?<\/p>/gi) ?? []
-  return paragraphs.slice(0, 2).join('\n')
+  const text = mdHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return textToSentenceParagraphsHtml(text)
 }
 
 function awardClass(color?: string): string {
@@ -98,12 +99,6 @@ export function renderCompareTable(products: HydratedProduct[]): string {
     )
     .join('\n')
 
-  const priceRow = `
-    <tr>
-      <th class="row-label">Price</th>
-      ${products.map((p) => `<td class="col spec">${escapeHtml(p.price_range || '—')}</td>`).join('\n')}
-    </tr>`
-
   const ctaRow = `
     <tr>
       <th class="row-label">Buy Now</th>
@@ -125,7 +120,6 @@ export function renderCompareTable(products: HydratedProduct[]): string {
             ${photoRow}
             ${nameRow}
             ${specHtml}
-            ${priceRow}
             ${ctaRow}
           </tbody>
         </table>
@@ -152,11 +146,17 @@ export function renderProductReview(product: HydratedProduct, index: number): st
   const prosHtml = (product.pros ?? []).map((p) => `<li>${escapeHtml(p)}</li>`).join('')
   const consHtml = (product.cons ?? []).map((c) => `<li>${escapeHtml(c)}</li>`).join('')
   const bodyHtml = product.body ? renderBodyContent(product.body) : ''
-  const headingText = `${escapeHtml(product.name)} — ${escapeHtml(product.tagline || product.best_for || '')}`
   const affiliateUrl = escapeAttr(product.affiliate_url)
+  const tagline = product.tagline || product.best_for || ''
+  const headingBlock = productHeadingBlockHtml({
+    id: `product-${index + 1}`,
+    name: product.name || '',
+    tagline,
+    affiliateUrl: product.affiliate_url,
+  })
 
   return `
-    <h2 id="product-${index + 1}"><a href="${affiliateUrl}" target="_blank" rel="nofollow sponsored noopener">${headingText}<span class="heading-link-icon" aria-hidden="true">↗</span></a></h2>
+    ${headingBlock}
 
     <div class="product-review">
       <div class="product-review-header">
@@ -200,11 +200,11 @@ export function renderProductReview(product: HydratedProduct, index: number): st
 
       <div class="review-cta">
         <div class="price-display">
-          <span class="price-label">Price at time of writing</span>
+          <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
           <span class="price-value">${escapeHtml(product.price_range || 'See on Amazon')}</span>
         </div>
-        <a href="${escapeAttr(product.affiliate_url)}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
-          <span class="btn-icon">→</span> Check ${escapeHtml(product.name || 'Price')} on Amazon
+        <a href="${affiliateUrl}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
+          ${PRODUCT_CTA_BUTTON_HTML}
         </a>
       </div>
     </div>`

@@ -9,7 +9,7 @@ export default function SiteHeader({ variant = 'home' }: SiteHeaderProps) {
     <nav className="topnav">
       <div className="topnav-inner">
         <Link href="/" className="logo">
-          Outdoor<span>Deals</span>
+          Gear<span>AndSteer</span>
         </Link>
         <div className="nav-links">
           <Link href="/guides">Guides</Link>
