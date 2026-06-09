@@ -157,10 +157,14 @@ export function buildArticleContentSegments(
   }
 }
 
-/** Insert divider before each h2 except the first. */
+/** Insert divider before each h2 except the first and product review headings. */
 export function insertH2SectionDividers(html: string): string {
   let seenH2 = false
-  return html.replace(/<h2\b[^>]*>/gi, (match) => {
+  return html.replace(/<h2\b([^>]*)>/gi, (match, attrs) => {
+    if (/id="product-\d+"/i.test(attrs)) {
+      seenH2 = true
+      return match
+    }
     if (!seenH2) {
       seenH2 = true
       return match

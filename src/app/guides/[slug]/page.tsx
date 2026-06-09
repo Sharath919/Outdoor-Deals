@@ -81,7 +81,7 @@ export default async function GuideArticlePage({
   const prepared = prepareGuideArticleHtml(article.content_html || '', products)
   const compareTableHtml =
     products.length > 0
-      ? renderCompareTable(guideProductsToHydrated(products))
+      ? renderCompareTable(guideProductsToHydrated(products, article.product_specs))
       : prepared.comparisonTableHtml
   const authorName = resolveAuthorDisplayName(article)
   const disclosureText = amazonConfig.disclosureText
@@ -104,7 +104,7 @@ export default async function GuideArticlePage({
         {prepared.introHtml && <ArticleSection html={prepared.introHtml} />}
 
         {compareTableHtml && (
-          <div className="compare-full-bleed">
+          <div className="compare-wide">
             <div
               className="article-content"
               dangerouslySetInnerHTML={{ __html: compareTableHtml }}

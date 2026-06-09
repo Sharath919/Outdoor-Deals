@@ -67,6 +67,14 @@ function renderComparePhoto(product: HydratedProduct): string {
     </td>`
 }
 
+function renderCompareSpecValue(raw: string | undefined): string {
+  const value = (raw ?? '').trim()
+  if (!value) return '—'
+  if (value === 'Yes') return '<span class="compare-yes" aria-label="Yes">✓</span>'
+  if (value === 'No') return '<span class="compare-no" aria-label="No">✗</span>'
+  return escapeHtml(value)
+}
+
 export function renderCompareTable(products: HydratedProduct[]): string {
   if (products.length === 0) return ''
 
@@ -94,7 +102,7 @@ export function renderCompareTable(products: HydratedProduct[]): string {
       (row) => `
     <tr>
       <th class="row-label">${escapeHtml(row.label)}</th>
-      ${products.map((p) => `<td class="col spec">${escapeHtml(p.specs?.[row.key] || '—')}</td>`).join('\n')}
+      ${products.map((p) => `<td class="col spec">${renderCompareSpecValue(p.specs?.[row.key])}</td>`).join('\n')}
     </tr>`,
     )
     .join('\n')

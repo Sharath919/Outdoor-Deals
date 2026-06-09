@@ -310,12 +310,14 @@
 }
 
 .guide-page .product-tagline-sub {
+  font-family: var(--font-body);
   font-size: 0.9rem;
   line-height: 1.5;
   color: color-mix(in srgb, var(--ink) 60%, transparent);
   margin-top: 0.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   font-weight: 400;
+  font-style: normal;
   max-width: var(--container);
 }
 
@@ -361,6 +363,16 @@
   height: 3px;
   background: var(--accent);
   margin-bottom: 16px;
+}
+
+.guide-page .article-content h2[id^="product-"] {
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.2;
+  margin: 2.5rem 0 0;
+}
+
+.guide-page .article-content h2[id^="product-"]::before {
+  display: none;
 }
 
 .guide-page .article-content h3 {
@@ -514,18 +526,15 @@
   font-size: 16px;
 }
 
-/* ── Comparison table — full bleed ── */
-.guide-page .compare-full-bleed {
-  width: 100vw;
-  max-width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-  margin-top: 0;
-  margin-bottom: 48px;
+/* ── Comparison table — wide contained layout ── */
+.guide-page .compare-wide {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin: 32px auto 48px;
   padding: 0;
 }
 
-.guide-page .compare-full-bleed .article-content {
+.guide-page .compare-wide .article-content {
   max-width: none;
   padding: 0;
 }
@@ -533,10 +542,10 @@
 .guide-page .comparison-wrap {
   margin: 0;
   overflow-x: auto;
-  border: none;
-  border-radius: 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(26, 31, 26, 0.04);
 }
 
 .guide-page table.comparison {
@@ -705,20 +714,20 @@
 }
 
 /* ── Column compare table (affiliate pipeline) ── */
-.guide-page .compare-full-bleed .compare-section {
+.guide-page .compare-wide .compare-section {
   margin: 0;
 }
 
 .guide-page .compare-section {
-  margin: 48px 0;
+  margin: 0;
 }
 
 .guide-page .compare-wrap {
   overflow-x: auto;
-  border: none;
-  border-radius: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
   background: var(--bg-card);
-  box-shadow: none;
+  box-shadow: 0 2px 8px rgba(26, 31, 26, 0.04);
 }
 
 .guide-page table.compare {
@@ -766,6 +775,20 @@
 .guide-page table.compare td.spec {
   font-size: 13px;
   color: var(--ink-soft);
+}
+
+.guide-page table.compare .compare-yes {
+  color: var(--pro);
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.guide-page table.compare .compare-no {
+  color: var(--con);
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .guide-page .compare-img-cell {
@@ -1155,6 +1178,10 @@
   background: var(--accent);
   margin: 2rem 0;
   border: none;
+}
+
+.guide-page .product-review + .article-section-accent-divider {
+  display: none;
 }
 
 /* Hide legacy limansa elements */

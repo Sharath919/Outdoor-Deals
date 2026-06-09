@@ -8,6 +8,7 @@ import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
 import {
   PRODUCT_CTA_BUTTON_HTML,
   PRODUCT_PRICE_LABEL,
+  extractBottomLineBlock,
   htmlToSentenceParagraphsHtml,
   parseHeadingNameTagline,
   productHeadingBlockHtml,
@@ -155,9 +156,7 @@ function reformatReviewBodyParagraphs(html: string): string {
   const reviewRe =
     /(<div class="review-body">)([\s\S]*?)(<\/div>\s*<div class="review-cta">)/gi
   return html.replace(reviewRe, (_full, open, body, close) => {
-    const bottomLineMatch = body.match(/<div class="bottom-line">[\s\S]*?<\/div>/i)
-    const bottomLine = bottomLineMatch?.[0] ?? ''
-    const bodyWithoutBottom = bottomLine ? body.replace(bottomLine, '') : body
+    const { body: bodyWithoutBottom, bottomLine } = extractBottomLineBlock(body)
     const reformatted = htmlToSentenceParagraphsHtml(bodyWithoutBottom)
     return `${open}${reformatted}${bottomLine}${close}`
   })
