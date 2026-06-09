@@ -67,6 +67,64 @@ function renderComparePhoto(product: HydratedProduct): string {
     </td>`
 }
 
+const MAX_COMPARE_SPEC_ROWS = 4
+
+function normalizeSpecKey(key: string): string {
+  return key.toLowerCase().replace(/\s+/g, '_')
+}
+
+function findSpecKey(allKeys: string[], candidates: string[]): string | undefined {
+  const byNormalized = new Map(allKeys.map((key) => [normalizeSpecKey(key), key]))
+  for (const candidate of candidates) {
+    const match = byNormalized.get(candidate)
+    if (match) return match
+  }
+  return undefined
+}
+
+function uniqueSpecValueCount(products: HydratedProduct[], key: string): number {
+  return new Set(
+    products.map((product) => (product.specs?.[key] ?? '').trim()).filter(Boolean),
+  ).size
+}
+
+/** Pick up to 4 spec rows with editorial priority and most-differentiating fallback. */
+export function selectCompareSpecKeys(
+  products: HydratedProduct[],
+  maxRows = MAX_COMPARE_SPEC_ROWS,
+): string[] {
+  const allKeys = [...new Set(products.flatMap((product) => Object.keys(product.specs ?? {})))]
+  if (allKeys.length <= maxRows) return allKeys
+
+  const selected: string[] = []
+  const used = new Set<string>()
+
+  const pick = (key: string | undefined) => {
+    if (!key || used.has(key) || selected.length >= maxRows) return
+    selected.push(key)
+    used.add(key)
+  }
+
+  pick(findSpecKey(allKeys, ['weight']))
+  pick(findSpecKey(allKeys, ['capacity', 'lumens', 'temp_rating']))
+  pick(findSpecKey(allKeys, ['waterproof']))
+
+  const remaining = allKeys
+    .filter((key) => !used.has(key))
+    .sort((a, b) => {
+      const diff = uniqueSpecValueCount(products, b) - uniqueSpecValueCount(products, a)
+      if (diff !== 0) return diff
+      return a.localeCompare(b)
+    })
+
+  for (const key of remaining) {
+    if (selected.length >= maxRows) break
+    pick(key)
+  }
+
+  return selected
+}
+
 function renderCompareSpecValue(raw: string | undefined): string {
   const value = (raw ?? '').trim()
   if (!value) return '—'
@@ -78,9 +136,8 @@ function renderCompareSpecValue(raw: string | undefined): string {
 export function renderCompareTable(products: HydratedProduct[]): string {
   if (products.length === 0) return ''
 
-  const specKeys = new Set<string>()
-  products.forEach((p) => Object.keys(p.specs ?? {}).forEach((k) => specKeys.add(k)))
-  const specRows = [...specKeys].map((key) => ({
+  const specKeys = selectCompareSpecKeys(products)
+  const specRows = specKeys.map((key) => ({
     label: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
     key,
   }))
