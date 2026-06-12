@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
 import QuickPicks from '@/components/guide/QuickPicks'
+import PriceWatchMount from '@/components/PriceWatchMount'
 import RedditWelcome from '@/components/guide/RedditWelcome'
 import AuthorBio from '@/components/guide/AuthorBio'
 import {
@@ -13,6 +14,7 @@ import {
   getPublishedArticleBySlug,
   getPublishedArticleSlugs,
 } from '@/lib/articles-server'
+import { getTrackedPricesForAsins } from '@/lib/server/deals-server'
 import { renderCompareTable } from '@/lib/server/affiliate-pipeline/render'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import { SITE_URL } from '@/config/site'
@@ -77,6 +79,8 @@ export default async function GuideArticlePage({
   if (!article) notFound()
 
   const products = await getArticleProducts(article.id)
+  const asins = products.map((p) => p.asin).filter((a): a is string => Boolean(a))
+  const trackedPrices = await getTrackedPricesForAsins(asins)
   const amazonConfig = await readAmazonAffiliateServerConfig()
   const prepared = prepareGuideArticleHtml(article.content_html || '', products)
   const compareTableHtml =
@@ -114,6 +118,7 @@ export default async function GuideArticlePage({
 
         <ArticleSection html={bodySections.quickTips} />
         <ArticleSection html={bodySections.products} />
+        <PriceWatchMount articleSlug={slug} trackedPrices={trackedPrices} />
         <ArticleSection html={bodySections.whatToLookFor} />
         <ArticleSection html={bodySections.whoShouldSkip} />
         <ArticleSection html={bodySections.community} />

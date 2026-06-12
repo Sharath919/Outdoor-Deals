@@ -1255,3 +1255,161 @@
     margin: 0 auto;
   }
 }
+
+/* ── Price watch widget ── */
+.guide-page .price-watch-trigger {
+  display: block;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: var(--ink-mute);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.guide-page .price-watch-trigger:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.guide-page .price-watch-form {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.guide-page .price-watch-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.guide-page .price-watch-submit {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.guide-page .price-watch-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.guide-page .price-watch-status,
+.guide-page .price-watch-error {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+
+.guide-page .price-watch-status--success {
+  color: var(--accent);
+}
+
+.guide-page .price-watch-error {
+  color: #b33;
+  width: 100%;
+}
+
+/* ── Deal & watch landing pages ── */
+.deal-page .deal-main,
+.watch-page .watch-main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+.deal-card {
+  text-align: center;
+}
+
+.deal-image {
+  max-width: 280px;
+  height: auto;
+  margin: 0 auto 24px;
+  border-radius: 8px;
+}
+
+.deal-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  margin: 0 0 16px;
+}
+
+.deal-price-drop,
+.deal-price-current {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 24px;
+}
+
+.deal-cta {
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
+.deal-source {
+  font-size: 14px;
+  color: var(--ink-mute);
+}
+
+.deal-related {
+  margin-top: 48px;
+}
+
+.deal-related h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.deal-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.deal-related-item {
+  text-align: center;
+}
+
+.deal-related-img {
+  width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.deal-related-name {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.deal-related-cta {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.watch-page .watch-main h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+
+.watch-page .watch-main p {
+  margin-bottom: 16px;
+  line-height: 1.6;
+}

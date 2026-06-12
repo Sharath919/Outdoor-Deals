@@ -5,6 +5,7 @@ import {
 } from '@/lib/server/affiliate-pipeline/image-utils'
 import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
+import { priceWatchSlotHtml } from '@/utils/priceWatchSlot'
 import {
   PRODUCT_CTA_BUTTON_HTML,
   PRODUCT_PRICE_LABEL,
@@ -213,6 +214,23 @@ function classifySectionHeading(headingText: string, h2Id: string, chunk: string
   return 'other'
 }
 
+/** Inject watch widget slots into stored pipeline HTML that predates slot markup. */
+function injectPriceWatchSlotsInProducts(html: string, products: GuideProduct[]): string {
+  return html.replace(
+    /(<h2\b[^>]*\bid="product-(\d+)"[\s\S]*?<div class="review-cta">[\s\S]*?<a[^>]*class="[^"]*btn-large[^"]*"[^>]*>[\s\S]*?<\/a>)(?!\s*<div class="price-watch-slot")/gi,
+    (full, ctaBlock, numStr) => {
+      const idx = Number(numStr) - 1
+      const product = products[idx]
+      const slot = priceWatchSlotHtml({
+        asin: product?.asin,
+        productName: product?.title ?? '',
+        priceRange: product?.price_range,
+      })
+      return slot ? `${ctaBlock}\n        ${slot}` : full
+    },
+  )
+}
+
 export function parseGuideBodySections(bodyHtml: string): GuideBodySections {
   const sections: GuideBodySections = {
     quickTips: '',
@@ -391,6 +409,11 @@ function buildProductReviewCard(
     </div>`
     }
     <a href="${productUrl}" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored">${PRODUCT_CTA_BUTTON_HTML}</a>
+    ${priceWatchSlotHtml({
+      asin: products[index]?.asin ?? null,
+      productName: name,
+      priceRange: priceSpec?.value ?? products[index]?.price_range,
+    })}
   </div>
 </div>`
 }
@@ -540,8 +563,11 @@ export function prepareGuideArticleHtml(
   bodySections.whoShouldSkip = reformatSectionToSentenceParagraphs(bodySections.whoShouldSkip)
   bodySections.community = reformatSectionToSentenceParagraphs(bodySections.community)
   bodySections.buyingGuide = reformatSectionToSentenceParagraphs(bodySections.buyingGuide)
-  bodySections.products = normalizePriceLabels(
-    normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
+  bodySections.products = injectPriceWatchSlotsInProducts(
+    normalizePriceLabels(
+      normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
+    ),
+    products,
   )
 
   return {

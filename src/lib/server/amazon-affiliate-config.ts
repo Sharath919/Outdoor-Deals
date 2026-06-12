@@ -35,7 +35,9 @@ export async function readAmazonAffiliateServerConfig(): Promise<AmazonAffiliate
   const secretKey = envOr(configValue(map.amazon_paapi_secret_key), 'PAAPI_SECRET_KEY')
 
   return {
-    associateTag: envOr(publicConfig.associateTag, 'ASSOCIATE_TAG'),
+    associateTag:
+      envOr(publicConfig.associateTag, 'PAAPI_PARTNER_TAG') ||
+      envOr(publicConfig.associateTag, 'ASSOCIATE_TAG'),
     marketplace: envOr(publicConfig.marketplace, 'MARKETPLACE') || 'www.amazon.com',
     siteName: envOr(publicConfig.siteName, 'SITE_NAME'),
     siteUrl: envOr(publicConfig.siteUrl, 'SITE_URL'),

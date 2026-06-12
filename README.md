@@ -43,3 +43,70 @@ If a build still fails with `$NIXPACKS_PATH` errors, add `NIXPACKS_NO_CACHE=1` o
 ## Env
 
 Use `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `ANTHROPIC_API_KEY`, `REPLICATE_API_TOKEN`, `NEXT_PUBLIC_SITE_URL`.
+
+See `.env.example` for the full list including price-alert vars (`PAAPI_*`, `RESEND_API_KEY`, `ALERT_FROM_EMAIL`).
+
+## Price drop alerts
+
+Daily cron polls Amazon PA-API for tracked ASINs and emails users when a watched product drops ≥5% and ≥$5.
+
+### Database
+
+Apply `supabase/migrations/20260613120000_price_drop_alerts.sql` after the initial migrations. Tables: `tracked_products`, `price_watches`, `price_history`.
+
+### Env vars
+
+| Variable | Purpose |
+|----------|---------|
+| `PAAPI_ACCESS_KEY` / `PAAPI_SECRET_KEY` | PA-API credentials (same as hydration) |
+| `PAAPI_PARTNER_TAG` | Amazon Associates tag — **never hardcode** |
+| `RESEND_API_KEY` | Resend API key for alert emails |
+| `ALERT_FROM_EMAIL` | Sender, e.g. `GearAndSteer Alerts <alerts@mail.gearandsteer.com>` |
+| `CRON_SECRET` | Bearer token protecting `/api/cron/price-check` |
+| `NEXT_PUBLIC_SITE_URL` | Canonical site URL for email links |
+
+### Resend DNS (mail.gearandsteer.com)
+
+In the Resend dashboard, add domain `mail.gearandsteer.com` and create the DNS records Resend provides:
+
+- **SPF** — TXT record authorizing Resend to send
+- **DKIM** — CNAME/TXT records for domain signing
+- **Return-Path** (if shown) — CNAME for bounce handling
+
+Verify the domain before sending production emails.
+
+### Railway cron (price check)
+
+Add a second Railway cron service (or extend the existing cron service) with schedule **daily at 11:00 UTC**:
+
+```bash
+npm run cron:price-check
+```
+
+This runs `scripts/price-check-trigger.mjs`, which POSTs to:
+
+```
+https://gearandsteer.com/api/cron/price-check
+```
+
+with `Authorization: Bearer $CRON_SECRET`.
+
+Alternatively, call the endpoint directly:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://gearandsteer.com/api/cron/price-check
+```
+
+### Run price check locally
+
+With the dev server running and env vars set:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/price-check
+```
+
+Or trigger via the script (uses `NEXT_PUBLIC_SITE_URL`):
+
+```bash
+npm run cron:price-check
+```

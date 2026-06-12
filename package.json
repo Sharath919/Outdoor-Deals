@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "sitemap": "tsx scripts/generate-sitemap.ts",
     "cron:publishing": "tsx scripts/run-cron-publishing.ts",
-    "cron:price-alerts": "tsx scripts/price-alert-worker.ts"
+    "cron:price-check": "node scripts/price-check-trigger.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",

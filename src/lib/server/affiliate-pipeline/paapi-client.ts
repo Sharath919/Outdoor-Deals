@@ -226,6 +226,75 @@ export async function getItemByAsin(
   }
 }
 
+const PRICE_CHECK_RESOURCES = ['Offers.Listings.Price', 'OffersV2.Listings.Price']
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export type PaapiBatchItemResult = {
+  asin: string
+  item: PaapiItem | null
+  errors: string[]
+}
+
+/** Batch GetItems for price polling — sequential batches with delay (never parallel). */
+export async function getItemsByAsinsBatched(
+  asins: string[],
+  config: AmazonAffiliateServerConfig,
+  options?: { batchSize?: number; delayMs?: number },
+): Promise<PaapiBatchItemResult[]> {
+  const common = buildPaapiCommonParams(config)
+  const client = await getPaapiClient()
+  if (!common || !client || asins.length === 0) {
+    return asins.map((asin) => ({
+      asin,
+      item: null,
+      errors: ['PA-API client unavailable'],
+    }))
+  }
+
+  const batchSize = options?.batchSize ?? 10
+  const delayMs = options?.delayMs ?? 1200
+  const results: PaapiBatchItemResult[] = []
+
+  for (let i = 0; i < asins.length; i += batchSize) {
+    if (i > 0) await sleep(delayMs)
+
+    const batch = asins.slice(i, i + batchSize)
+    try {
+      const response = await client.GetItemsV2(common, {
+        ItemIds: batch,
+        Resources: PRICE_CHECK_RESOURCES,
+      })
+
+      const errors = extractPaapiErrors(response)
+      const items =
+        (response as { ItemsResult?: { Items?: PaapiItem[] } })?.ItemsResult?.Items ?? []
+      const byAsin = new Map(
+        items.map((item) => [String((item as { ASIN?: string }).ASIN ?? '').toUpperCase(), item]),
+      )
+
+      for (const asin of batch) {
+        const key = asin.toUpperCase()
+        const item = byAsin.get(key) ?? null
+        results.push({
+          asin: key,
+          item,
+          errors: item ? [] : errors.length ? errors : [`No item returned for ${key}`],
+        })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      for (const asin of batch) {
+        results.push({ asin: asin.toUpperCase(), item: null, errors: [message] })
+      }
+    }
+  }
+
+  return results
+}
+
 /** Lightweight connectivity check for Admin settings. */
 export async function testPaapiConnection(
   config: AmazonAffiliateServerConfig,

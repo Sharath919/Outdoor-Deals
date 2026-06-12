@@ -6,6 +6,7 @@ import { buildSpecFromClaudeOutput } from './parse-spec'
 import { repairCorruptedPipelineHtml } from './repair-html'
 import { renderArticleBody, renderCompareTable } from './render'
 import { linkProductsToArticle } from './link-products'
+import { upsertTrackedProductsFromHydration } from '@/lib/server/tracked-products'
 import type { ArticleProductSpec, ArticleSpec, HydratedArticleSpec, PipelineResult } from './types'
 
 export async function runAffiliatePipeline(
@@ -111,6 +112,7 @@ export async function applyPipelineToArticle(
       result.spec.products,
       input.category ?? null,
     )
+    await upsertTrackedProductsFromHydration(supabase, result.spec.products)
   }
 
   return result

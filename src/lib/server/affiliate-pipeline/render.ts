@@ -7,6 +7,7 @@ import {
   textToSentenceParagraphsHtml,
 } from '@/utils/guideProductCopy'
 import { htmlParagraphsToText } from './product-parse-utils'
+import { priceWatchSlotHtml } from '@/utils/priceWatchSlot'
 import type { HydratedProduct, HydratedArticleSpec, PipelineRenderResult } from './types'
 
 marked.setOptions({ gfm: true, breaks: true })
@@ -271,6 +272,7 @@ export function renderProductReview(product: HydratedProduct, index: number): st
         <a href="${affiliateUrl}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
           ${PRODUCT_CTA_BUTTON_HTML}
         </a>
+        ${priceWatchSlotHtml({ asin: product.asin, productName: product.name || '', priceRange: product.price_range })}
       </div>
     </div>`
 }
