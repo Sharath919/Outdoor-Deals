@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Bell, Check } from 'lucide-react'
 
 type Props = {
   asin: string
@@ -64,52 +65,69 @@ export default function PriceWatchWidget({
 
   if (status === 'confirm_sent') {
     return (
-      <p className="price-watch-status price-watch-status--success">
-        Check your inbox to confirm your watch ✓
-      </p>
+      <div className="price-watch">
+        <div className="price-watch-panel price-watch-panel--success">
+          <Check className="price-watch-icon" size={16} aria-hidden />
+          <span>Check your inbox to confirm your watch.</span>
+        </div>
+      </div>
     )
   }
 
   if (status === 'already_watching') {
     return (
-      <p className="price-watch-status">You&apos;re already watching this one.</p>
+      <div className="price-watch">
+        <div className="price-watch-panel price-watch-panel--success">
+          <span>You&apos;re already watching this one.</span>
+        </div>
+      </div>
     )
   }
 
   if (!expanded) {
     return (
-      <button
-        type="button"
-        className="price-watch-trigger"
-        onClick={() => setExpanded(true)}
-      >
-        🔔 Watch this price — get an email if it drops
-      </button>
+      <div className="price-watch">
+        <button
+          type="button"
+          className="price-watch-trigger"
+          onClick={() => setExpanded(true)}
+        >
+          <Bell className="price-watch-icon" size={16} aria-hidden />
+          Not ready? Watch this price
+        </button>
+      </div>
     )
   }
 
   return (
-    <div className="price-watch-form">
-      <input
-        type="email"
-        className="price-watch-input"
-        placeholder="your@email.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        disabled={status === 'loading'}
-        aria-label="Email for price alerts"
-      />
-      <button
-        type="button"
-        className="price-watch-submit"
-        onClick={handleSubmit}
-        disabled={status === 'loading' || !email.trim()}
-      >
-        {status === 'loading' ? 'Sending…' : 'Watch price'}
-      </button>
-      {status === 'error' && errorMsg && (
-        <p className="price-watch-error" role="alert">{errorMsg}</p>
-      )}
+    <div className="price-watch">
+      <div className="price-watch-panel">
+        <div className="price-watch-row">
+          <input
+            type="email"
+            className="price-watch-input"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={status === 'loading'}
+            aria-label="Email for price alerts"
+          />
+          <button
+            type="button"
+            className="price-watch-submit"
+            onClick={handleSubmit}
+            disabled={status === 'loading' || !email.trim()}
+          >
+            {status === 'loading' ? 'Sending…' : 'Watch price'}
+          </button>
+        </div>
+        <p className="price-watch-helper">
+          One email if it drops 5% or more. No spam, unsubscribe anytime.
+        </p>
+        {status === 'error' && errorMsg && (
+          <p className="price-watch-error" role="alert">{errorMsg}</p>
+        )}
+      </div>
     </div>
   )
 }

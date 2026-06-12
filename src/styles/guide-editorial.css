@@ -1257,51 +1257,89 @@
 }
 
 /* ── Price watch widget ── */
-.guide-page .price-watch-trigger {
-  display: block;
+.guide-page .price-watch {
   margin-top: 10px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 12px;
-  color: var(--ink-mute);
+  width: 100%;
+}
+
+.guide-page .price-watch-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 28px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
   cursor: pointer;
-  text-align: left;
+  transition: background 0.15s ease;
   line-height: 1.4;
 }
 
 .guide-page .price-watch-trigger:hover {
-  color: var(--accent);
-  text-decoration: underline;
+  background: rgba(45, 74, 43, 0.06);
 }
 
-.guide-page .price-watch-form {
-  margin-top: 10px;
+.guide-page .price-watch-icon {
+  flex-shrink: 0;
+}
+
+.guide-page .price-watch-panel {
+  padding: 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+}
+
+.guide-page .price-watch-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
   gap: 8px;
   align-items: center;
 }
 
 .guide-page .price-watch-input {
   flex: 1;
-  min-width: 160px;
-  padding: 8px 10px;
-  font-size: 13px;
+  min-width: 0;
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--bg);
+  color: var(--ink);
+}
+
+.guide-page .price-watch-input::placeholder {
+  color: var(--ink-mute);
+}
+
+.guide-page .price-watch-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 .guide-page .price-watch-submit {
-  padding: 8px 14px;
-  font-size: 13px;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 600;
-  border: 1px solid var(--accent);
+  border: none;
   border-radius: 4px;
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.guide-page .price-watch-submit:hover:not(:disabled) {
+  background: #243d22;
 }
 
 .guide-page .price-watch-submit:disabled {
@@ -1309,20 +1347,29 @@
   cursor: not-allowed;
 }
 
-.guide-page .price-watch-status,
-.guide-page .price-watch-error {
-  margin-top: 10px;
+.guide-page .price-watch-helper {
+  margin: 8px 0 0;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--ink-mute);
 }
 
-.guide-page .price-watch-status--success {
+.guide-page .price-watch-panel--success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--accent);
+  text-align: center;
 }
 
 .guide-page .price-watch-error {
+  margin: 8px 0 0;
+  font-size: 12px;
   color: #b33;
-  width: 100%;
+  line-height: 1.4;
 }
 
 /* ── Deal & watch landing pages ── */
