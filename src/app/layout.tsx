@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     template: '%s | GearAndSteer',
   },
   description: 'Outdoor gear guides, budget roundups, and smart product picks.',
+  verification: {
+    other: {
+      'msvalidate.01': 'F266E1E0DE817DB3C843EEAF9AB2887F',
+    },
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

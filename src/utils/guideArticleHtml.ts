@@ -214,21 +214,53 @@ function classifySectionHeading(headingText: string, h2Id: string, chunk: string
   return 'other'
 }
 
-/** Inject watch widget slots into stored pipeline HTML that predates slot markup. */
+/** Remove watch slots wrongly placed inside headings or duplicated outside review-cta. */
+function stripMisplacedPriceWatchSlots(html: string): string {
+  let out = html.replace(
+    /<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi,
+    (_full, attrs, inner) => `<h2${attrs}>${inner.replace(/<div class="price-watch-slot"[\s\S]*?<\/div>\s*/gi, '')}</h2>`,
+  )
+
+  out = out.replace(
+    /(<h2\b[^>]*\bid="product-\d+"[\s\S]*?)(<div class="price-watch-slot"[\s\S]*?<\/div>\s*)(?=<p class="product-tagline-sub"|<div class="product-review")/gi,
+    '$1',
+  )
+
+  return out
+}
+
+/** Ensure exactly one watch slot per product, after the review CTA button. */
 function injectPriceWatchSlotsInProducts(html: string, products: GuideProduct[]): string {
-  return html.replace(
-    /(<h2\b[^>]*\bid="product-(\d+)"[\s\S]*?<div class="review-cta">[\s\S]*?<a[^>]*class="[^"]*btn-large[^"]*"[^>]*>[\s\S]*?<\/a>)(?!\s*<div class="price-watch-slot")/gi,
-    (full, ctaBlock, numStr) => {
-      const idx = Number(numStr) - 1
-      const product = products[idx]
+  const cleaned = stripMisplacedPriceWatchSlots(html)
+  const parts = cleaned.split(/(?=<h2\b[^>]*\bid="product-\d+")/i)
+
+  if (parts.length <= 1) return cleaned
+
+  return parts
+    .map((chunk) => {
+      if (!/<h2\b[^>]*\bid="product-(\d+)"/i.test(chunk)) return chunk
+
+      const idMatch = chunk.match(/\bid="product-(\d+)"/i)
+      const idx = idMatch ? Number(idMatch[1]) - 1 : -1
+      const product = idx >= 0 ? products[idx] : undefined
+
+      const withoutSlots = chunk.replace(/<div class="price-watch-slot"[\s\S]*?<\/div>\s*/gi, '')
       const slot = priceWatchSlotHtml({
         asin: product?.asin,
         productName: product?.title ?? '',
         priceRange: product?.price_range,
       })
-      return slot ? `${ctaBlock}\n        ${slot}` : full
-    },
-  )
+
+      if (!slot) return withoutSlots
+
+      const withSlot = withoutSlots.replace(
+        /(<div class="review-cta">[\s\S]*?<a[^>]*class="[^"]*\bbtn-large\b[^"]*"[^>]*>[\s\S]*?<\/a>)/i,
+        `$1\n        ${slot}`,
+      )
+
+      return withSlot
+    })
+    .join('')
 }
 
 export function parseGuideBodySections(bodyHtml: string): GuideBodySections {

@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase'
+import { outdoorCategoryLabel } from '@/config/outdoorCategories'
 import type { Article } from '@/types/article'
 
 export type GuideProduct = {
@@ -124,4 +125,104 @@ export async function getPublishedArticlesList(): Promise<Article[]> {
     .limit(100)
   if (error) return []
   return (data ?? []) as Article[]
+}
+
+export const GUIDES_PAGE_SIZE = 12
+
+export type GuideListItem = Pick<
+  Article,
+  'id' | 'slug' | 'title' | 'meta_description' | 'hero_image_url' | 'published_at' | 'category'
+>
+
+export type GuideCategoryCount = {
+  value: string
+  label: string
+  count: number
+}
+
+export type PublishedGuidesQueryResult = {
+  articles: GuideListItem[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  categories: GuideCategoryCount[]
+}
+
+export async function queryPublishedGuides(options?: {
+  page?: number
+  pageSize?: number
+  category?: string | null
+}): Promise<PublishedGuidesQueryResult> {
+  const supabase = createServerSupabase()
+  const pageSize = options?.pageSize ?? GUIDES_PAGE_SIZE
+  const page = Math.max(1, options?.page ?? 1)
+  const category = options?.category?.trim() || null
+
+  if (!supabase) {
+    return {
+      articles: [],
+      total: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+      categories: [],
+    }
+  }
+
+  const { data: categoryRows } = await supabase
+    .from('articles')
+    .select('category')
+    .eq('status', 'published')
+    .not('category', 'is', null)
+
+  const categoryCounts = new Map<string, number>()
+  for (const row of categoryRows ?? []) {
+    const key = String(row.category ?? '').trim()
+    if (!key) continue
+    categoryCounts.set(key, (categoryCounts.get(key) ?? 0) + 1)
+  }
+
+  const categories: GuideCategoryCount[] = [...categoryCounts.entries()]
+    .map(([value, count]) => ({
+      value,
+      label: outdoorCategoryLabel(value),
+      count,
+    }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let query = supabase
+    .from('articles')
+    .select(
+      'id, slug, title, meta_description, hero_image_url, published_at, category',
+      { count: 'exact' },
+    )
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(from, to)
+
+  if (category) {
+    query = query.eq('category', category)
+  }
+
+  const { data, error, count } = await query
+  const total = count ?? 0
+  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 0
+
+  if (error) {
+    console.error('[articles-server] queryPublishedGuides:', error.message)
+    return { articles: [], total: 0, page, pageSize, totalPages: 0, categories }
+  }
+
+  return {
+    articles: (data ?? []) as GuideListItem[],
+    total,
+    page,
+    pageSize,
+    totalPages,
+    categories,
+  }
 }
