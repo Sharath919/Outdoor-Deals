@@ -8,6 +8,7 @@ export const ADMIN_NAV = [
   { icon: '🔗', label: 'Amazon Affiliate', path: '/admin/settings/amazon-affiliate' },
   { icon: '🧠', label: 'Article Machine', path: '/admin/settings/article-machine' },
   { icon: '📉', label: 'API Usage', path: '/admin/analytics/api-usage' },
+  { icon: '🔔', label: 'Price Alerts', path: '/admin/analytics/price-alerts' },
   { icon: '🖥️', label: 'System', path: '/admin/system' },
 ] as const
 

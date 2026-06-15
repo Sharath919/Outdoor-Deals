@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/settings/amazon-affiliate': 'Amazon Affiliate',
   '/admin/settings/article-machine': 'Article Machine',
   '/admin/analytics/api-usage': 'API Usage',
+  '/admin/analytics/price-alerts': 'Price Alerts',
   '/admin/system': 'System',
 }
 

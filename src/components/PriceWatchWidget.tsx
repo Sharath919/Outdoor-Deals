@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Bell, Check } from 'lucide-react'
+import { PRICE_WATCH_TRIGGER_LABEL } from '@/utils/guideProductCopy'
 
 type Props = {
   asin: string
@@ -93,7 +94,7 @@ export default function PriceWatchWidget({
           onClick={() => setExpanded(true)}
         >
           <Bell className="price-watch-icon" size={16} aria-hidden />
-          Not ready? Watch this price
+          {PRICE_WATCH_TRIGGER_LABEL}
         </button>
       </div>
     )

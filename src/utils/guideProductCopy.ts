@@ -15,6 +15,8 @@ export const PRODUCT_CTA_BUTTON_HTML = `<span class="btn-icon">→</span> ${PROD
 
 export const PRODUCT_PRICE_LABEL = 'Estimated price'
 
+export const PRICE_WATCH_TRIGGER_LABEL = 'Alert me when the price drops'
+
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&amp;#39;/g, "'")
