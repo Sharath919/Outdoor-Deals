@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.limansa.com/sitemap.xml
+Sitemap: https://gearandsteer.com/sitemap.xml
