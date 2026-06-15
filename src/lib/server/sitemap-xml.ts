@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { EDITORIAL_SITE_NAME } from '@/config/editorial'
 import { SITE_URL } from '@/config/site'
+import { ensureNodeWebSocket } from '@/lib/server/node-websocket'
 
 export interface SitemapImage {
   loc: string
@@ -150,41 +151,50 @@ function getSitemapSupabase() {
     .replace(/\/$/, '')
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
   if (!url || !serviceKey) return null
+  ensureNodeWebSocket()
   return createClient(url, serviceKey)
 }
 
 export async function fetchPublishedArticleUrls(): Promise<SitemapUrl[]> {
-  const supabase = getSitemapSupabase()
-  if (!supabase) return []
+  try {
+    const supabase = getSitemapSupabase()
+    if (!supabase) return []
 
-  const { data: articles, error } = await supabase
+    const { data: articles, error } = await supabase
     .from('articles')
     .select('slug, title, updated_at, published_at, hero_image_url')
     .eq('status', 'published')
     .order('published_at', { ascending: false })
     .limit(5000)
 
-  if (error || !articles?.length) return []
+    if (error || !articles?.length) return []
 
-  return (articles as Article[]).map((article) => {
-    const images: SitemapImage[] = []
+    return (articles as Article[]).map((article) => {
+      const images: SitemapImage[] = []
 
-    if (article.hero_image_url) {
-      images.push({
-        loc: article.hero_image_url,
-        title: article.title,
-        caption: `${article.title} — ${EDITORIAL_SITE_NAME}`,
-      })
-    }
+      if (article.hero_image_url) {
+        images.push({
+          loc: article.hero_image_url,
+          title: article.title,
+          caption: `${article.title} — ${EDITORIAL_SITE_NAME}`,
+        })
+      }
 
-    return {
-      loc: `/guides/${article.slug}`,
-      lastmod: (article.updated_at || article.published_at).split('T')[0],
-      changefreq: 'weekly' as const,
-      priority: '0.8',
-      images: images.length > 0 ? images : undefined,
-    }
-  })
+      return {
+        loc: `/guides/${article.slug}`,
+        lastmod: (article.updated_at || article.published_at).split('T')[0],
+        changefreq: 'weekly' as const,
+        priority: '0.8',
+        images: images.length > 0 ? images : undefined,
+      }
+    })
+  } catch (err) {
+    console.warn(
+      '[sitemap] Failed to fetch articles:',
+      err instanceof Error ? err.message : err,
+    )
+    return []
+  }
 }
 
 function escapeXml(str: string): string {
