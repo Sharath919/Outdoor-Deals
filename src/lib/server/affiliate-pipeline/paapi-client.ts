@@ -81,11 +81,12 @@ async function getPaapiClient(): Promise<PaapiClient | null> {
 export function buildPaapiCommonParams(
   config: AmazonAffiliateServerConfig,
 ): PaapiCommonParams | null {
-  if (!config.paapiAccessKey || !config.paapiSecretKey || !config.associateTag) return null
+  const partnerTag = config.paapiPartnerTag?.trim() || config.associateTag?.trim()
+  if (!config.paapiAccessKey || !config.paapiSecretKey || !partnerTag) return null
   return {
     AccessKey: config.paapiAccessKey,
     SecretKey: config.paapiSecretKey,
-    PartnerTag: config.associateTag,
+    PartnerTag: partnerTag,
     PartnerType: 'Associates',
     Marketplace: config.marketplace || 'www.amazon.com',
   }

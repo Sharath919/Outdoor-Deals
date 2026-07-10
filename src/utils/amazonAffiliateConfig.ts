@@ -31,6 +31,7 @@ export function buildAmazonAffiliateConfigFromRows(
 
   return {
     associateTag: pick(map, 'amazon_associate_tag', d.associateTag),
+    paapiPartnerTag: pick(map, 'amazon_paapi_partner_tag', d.paapiPartnerTag),
     marketplace: pick(map, 'amazon_marketplace', d.marketplace),
     siteName: pick(map, 'amazon_site_name', d.siteName),
     siteUrl: pick(map, 'amazon_site_url', d.siteUrl),
@@ -66,6 +67,7 @@ export function configToUpsertRows(
 ): { key: AmazonConfigKey; value: string }[] {
   const rows: { key: AmazonConfigKey; value: string }[] = [
     { key: 'amazon_associate_tag', value: draft.associateTag.trim() },
+    { key: 'amazon_paapi_partner_tag', value: draft.paapiPartnerTag.trim() },
     { key: 'amazon_marketplace', value: draft.marketplace.trim() || 'www.amazon.com' },
     { key: 'amazon_site_name', value: draft.siteName.trim() },
     { key: 'amazon_site_url', value: draft.siteUrl.trim() },
@@ -89,7 +91,15 @@ export function configToUpsertRows(
 }
 
 export function isPaapiConfigured(config: AmazonAffiliateConfig): boolean {
-  return config.hasPaapiAccessKey && config.hasPaapiSecretKey && Boolean(config.associateTag)
+  const partnerTag = config.paapiPartnerTag.trim() || config.associateTag.trim()
+  return config.hasPaapiAccessKey && config.hasPaapiSecretKey && Boolean(partnerTag)
+}
+
+export function resolvePaapiPartnerTag(config: {
+  associateTag: string
+  paapiPartnerTag?: string
+}): string {
+  return config.paapiPartnerTag?.trim() || config.associateTag.trim()
 }
 
 /** Decode HTML entities in URLs parsed from Claude HTML before re-escaping for output. */

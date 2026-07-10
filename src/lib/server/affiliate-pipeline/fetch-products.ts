@@ -4,6 +4,7 @@ import {
   buildAmazonSearchUrl,
   isValidAsin,
   normalizeAsin,
+  resolvePaapiPartnerTag,
 } from '@/utils/amazonAffiliateConfig'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import type { AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
@@ -215,8 +216,9 @@ export async function hydrateProducts(
   const config = await readAmazonAffiliateServerConfig()
   const warnings: string[] = []
   const associateTag = config.associateTag
+  const paapiPartnerTag = resolvePaapiPartnerTag(config)
   const paapiConfigured = Boolean(
-    config.paapiAccessKey && config.paapiSecretKey && config.associateTag,
+    config.paapiAccessKey && config.paapiSecretKey && paapiPartnerTag,
   )
 
   if (!associateTag) {

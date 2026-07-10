@@ -97,6 +97,7 @@ export default function AmazonAffiliateSettings() {
     setDraft({
       ...draftFromConfig(next),
       associateTag: draft.associateTag.trim(),
+      paapiPartnerTag: draft.paapiPartnerTag.trim(),
       marketplace: draft.marketplace.trim(),
       siteName: draft.siteName.trim(),
       siteUrl: draft.siteUrl.trim(),
@@ -200,11 +201,21 @@ export default function AmazonAffiliateSettings() {
         <h2 className="font-cinzel text-sm text-gold">Status</h2>
         <ul className="font-inter text-sm space-y-2 text-foreground/70">
           <li>
-            Associate tag:{' '}
+            Link tracking tag:{' '}
             {draft.associateTag.trim() ? (
               <code className="text-gold">{draft.associateTag.trim()}</code>
             ) : (
               <span className="text-amber-400/90">Not set — required for affiliate links</span>
+            )}
+          </li>
+          <li>
+            PA-API partner tag:{' '}
+            {(draft.paapiPartnerTag.trim() || draft.associateTag.trim()) ? (
+              <code className="text-gold">
+                {draft.paapiPartnerTag.trim() || draft.associateTag.trim()}
+              </code>
+            ) : (
+              <span className="text-amber-400/90">Not set — must match your PA-API credentials</span>
             )}
           </li>
           <li>
@@ -253,15 +264,15 @@ export default function AmazonAffiliateSettings() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass}>Associate tag *</label>
+            <label className={labelClass}>Link tracking tag *</label>
             <input
               className={inputClass}
               value={draft.associateTag}
               onChange={(e) => setField('associateTag', e.target.value)}
-              placeholder="outdoordeals-20"
+              placeholder="gearandsteer-20"
               autoComplete="off"
             />
-            <p className={hintClass}>Format: yoursite-20</p>
+            <p className={hintClass}>Used on all outbound Amazon links (?tag=) for this site</p>
           </div>
           <div>
             <label className={labelClass}>Marketplace</label>
@@ -280,9 +291,25 @@ export default function AmazonAffiliateSettings() {
         <div>
           <h2 className="font-cinzel text-sm text-gold">Product Advertising API (PA-API)</h2>
           <p className={`${hintClass} leading-relaxed`}>
-            Optional. Requires 3 qualifying sales in 180 days. Without these, the pipeline uses manual
-            product data (SiteStripe images &amp; prices). Keys are stored server-side and never shown
-            again after saving.
+            Optional. Requires 3 qualifying sales in 180 days on the PA-API account. The{' '}
+            <strong className="font-normal text-foreground/60">PA-API partner tag</strong> must belong
+            to the same Associates account as your access/secret keys. Link tracking can use a
+            different tag (set above).
+          </p>
+        </div>
+
+        <div>
+          <label className={labelClass}>PA-API partner tag</label>
+          <input
+            className={inputClass}
+            value={draft.paapiPartnerTag}
+            onChange={(e) => setField('paapiPartnerTag', e.target.value)}
+            placeholder="novitekka-20"
+            autoComplete="off"
+          />
+          <p className={hintClass}>
+            Must match the Associates account that owns the keys below. Leave blank to use the link
+            tracking tag.
           </p>
         </div>
 

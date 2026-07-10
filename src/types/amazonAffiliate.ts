@@ -1,7 +1,10 @@
 /** Amazon Associates + PA-API settings stored in ai_config. */
 
 export type AmazonAffiliateConfig = {
+  /** Tracking ID on affiliate links (?tag=) for this site. */
   associateTag: string
+  /** Partner tag tied to PA-API credentials (can differ from associateTag). */
+  paapiPartnerTag: string
   marketplace: string
   siteName: string
   siteUrl: string
@@ -17,6 +20,7 @@ export type AmazonAffiliateConfig = {
 
 export const AMAZON_CONFIG_KEYS = [
   'amazon_associate_tag',
+  'amazon_paapi_partner_tag',
   'amazon_marketplace',
   'amazon_paapi_access_key',
   'amazon_paapi_secret_key',
@@ -35,6 +39,7 @@ export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
   'hasPaapiAccessKey' | 'hasPaapiSecretKey'
 > = {
   associateTag: '',
+  paapiPartnerTag: '',
   marketplace: 'www.amazon.com',
   siteName: 'GearAndSteer',
   siteUrl: 'https://gearandsteer.com',

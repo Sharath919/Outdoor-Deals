@@ -7,6 +7,7 @@ import { createServerSupabase } from '@/lib/supabase'
 import {
   buildAmazonAffiliateConfigFromRows,
   isPaapiConfigured,
+  resolvePaapiPartnerTag,
 } from '@/utils/amazonAffiliateConfig'
 import { AMAZON_CONFIG_KEYS, type AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
 
@@ -35,9 +36,12 @@ export async function readAmazonAffiliateServerConfig(): Promise<AmazonAffiliate
   const secretKey = envOr(configValue(map.amazon_paapi_secret_key), 'PAAPI_SECRET_KEY')
 
   return {
-    associateTag:
-      envOr(publicConfig.associateTag, 'PAAPI_PARTNER_TAG') ||
-      envOr(publicConfig.associateTag, 'ASSOCIATE_TAG'),
+    associateTag: envOr(publicConfig.associateTag, 'ASSOCIATE_TAG') ||
+      envOr(publicConfig.associateTag, 'AMAZON_ASSOCIATE_TAG'),
+    paapiPartnerTag:
+      envOr(publicConfig.paapiPartnerTag, 'PAAPI_PARTNER_TAG') ||
+      publicConfig.paapiPartnerTag.trim() ||
+      publicConfig.associateTag.trim(),
     marketplace: envOr(publicConfig.marketplace, 'MARKETPLACE') || 'www.amazon.com',
     siteName: envOr(publicConfig.siteName, 'SITE_NAME'),
     siteUrl: envOr(publicConfig.siteUrl, 'SITE_URL'),
@@ -61,7 +65,7 @@ export async function isAmazonPaapiAvailable(): Promise<boolean> {
   return Boolean(
     config.paapiAccessKey &&
       config.paapiSecretKey &&
-      config.associateTag,
+      resolvePaapiPartnerTag(config),
   )
 }
 

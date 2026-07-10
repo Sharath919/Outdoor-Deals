@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
 import { testPaapiConnection } from '@/lib/server/affiliate-pipeline/paapi-client'
+import { resolvePaapiPartnerTag } from '@/utils/amazonAffiliateConfig'
 
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -35,11 +36,12 @@ export async function handleTestPaapi(request: Request): Promise<Response> {
   }
 
   const config = await readAmazonAffiliateServerConfig()
-  if (!config.paapiAccessKey || !config.paapiSecretKey || !config.associateTag) {
+  if (!config.paapiAccessKey || !config.paapiSecretKey || !resolvePaapiPartnerTag(config)) {
     return jsonResponse({
       success: false,
       configured: false,
-      message: 'PA-API not fully configured — save access key, secret key, and associate tag first',
+      message:
+        'PA-API not fully configured — save access key, secret key, and PA-API partner tag first',
     })
   }
 
