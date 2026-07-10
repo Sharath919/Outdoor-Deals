@@ -63,14 +63,20 @@ export async function handleTestPaapi(request: Request): Promise<Response> {
     })
   }
 
+  const detail = Array.isArray(result.errors) && result.errors.length
+    ? result.errors.slice(0, 2).join('; ')
+    : ''
+
   return jsonResponse({
     success: false,
     configured: true,
     fatal: result.fatal,
     errors: result.errors,
     message: result.fatal
-      ? 'PA-API credentials or associate eligibility failed — check Associates Central sales quota'
-      : 'PA-API request completed but test search returned no product — check Railway logs for details',
+      ? `PA-API credentials or associate eligibility failed${detail ? ` — ${detail}` : ''}`
+      : detail
+        ? `PA-API search failed — ${detail}`
+        : 'PA-API request completed but test search returned no product',
   })
 }
 

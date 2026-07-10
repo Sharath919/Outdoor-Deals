@@ -10,15 +10,20 @@ export type PaapiCommonParams = {
   Marketplace: string
 }
 
-const PAAPI_RESOURCES = [
+const PAAPI_SEARCH_RESOURCES = [
   'Images.Primary.Large',
   'Images.Primary.Medium',
   'ItemInfo.Title',
   'ItemInfo.ByLineInfo',
+]
+
+const PAAPI_GET_RESOURCES = [
+  ...PAAPI_SEARCH_RESOURCES,
   'OffersV2.Listings.Price',
 ]
 
-const SEARCH_INDEXES = ['SportingGoods', 'Outdoors', 'All'] as const
+/** Valid US marketplace SearchIndex values (see PA-API locale reference). */
+const SEARCH_INDEXES = ['All', 'SportsAndOutdoors', 'Apparel', 'GardenAndOutdoor'] as const
 
 const CATEGORY_SEARCH_TERMS: Record<string, string> = {
   camping: 'camping tent',
@@ -98,6 +103,42 @@ function isFatalPaapiError(errors: string[]): boolean {
   return errors.some((e) => /Invalid|Access|Signature|Credential|Associate|NotEligible|Quota/i.test(e))
 }
 
+function formatThrownPaapiError(err: unknown): string[] {
+  const message = err instanceof Error ? err.message : String(err)
+  const body = (err as { response?: { body?: unknown } })?.response?.body
+  const amazonErrors = extractPaapiErrors(body)
+  if (amazonErrors.length) return amazonErrors
+  return [message]
+}
+
+async function runSearchItems(
+  client: PaapiClient,
+  common: PaapiCommonParams,
+  request: Record<string, unknown>,
+): Promise<PaapiLookupResult> {
+  try {
+    const response = await client.SearchItemsV2(common, request)
+    const errors = extractPaapiErrors(response)
+    if (errors.length) {
+      return { ok: false, errors, fatal: isFatalPaapiError(errors) }
+    }
+
+    const items = extractSearchItems(response)
+    const match = items.find(isValidPaapiItem)
+    if (!match) {
+      return { ok: false, errors: ['No matching catalog items in search response'], fatal: false }
+    }
+
+    const asin = String((match as { ASIN?: string }).ASIN ?? '')
+    if (!asin) {
+      return { ok: false, errors: ['Search response missing ASIN'], fatal: false }
+    }
+    return { ok: true, asin, item: match }
+  } catch (err) {
+    return { ok: false, errors: formatThrownPaapiError(err), fatal: false }
+  }
+}
+
 export function extractSearchItems(response: unknown): PaapiItem[] {
   return (response as { SearchResult?: { Items?: PaapiItem[] } })?.SearchResult?.Items ?? []
 }
@@ -124,9 +165,11 @@ export function buildSearchQueries(keywords: string, category?: string | null): 
   if (/\binflat/i.test(base) && !/\btent\b/i.test(lower)) {
     queries.add(`${base} inflatable tent`)
   }
-  if (/\b(headlamp|headlight|tent|backpack|sleeping bag|stove|cooler)\b/i.test(base)) {
-    // already names a product type
-  } else {
+  const namesProductType =
+    /\b(headlamp|headlight|tent|backpack|sleeping bag|stove|cooler|hat|cap|bucket|beanie|gloves?|jacket|shirt|pants|shorts|socks|boots?|shoes?)\b/i.test(
+      base,
+    )
+  if (!namesProductType) {
     queries.add(`${base} camping`)
   }
 
@@ -149,38 +192,21 @@ export async function searchProductByKeywords(
 
   for (const query of queries) {
     for (const searchIndex of SEARCH_INDEXES) {
-      try {
-        const response = await client.SearchItemsV2(common, {
-          Keywords: query,
-          SearchIndex: searchIndex,
-          ItemCount: 3,
-          Resources: PAAPI_RESOURCES,
-        })
+      const result = await runSearchItems(client, common, {
+        Keywords: query,
+        SearchIndex: searchIndex,
+        ItemCount: 3,
+        Resources: PAAPI_SEARCH_RESOURCES,
+      })
 
-        const errors = extractPaapiErrors(response)
-        if (errors.length) {
-          lastErrors = errors
-          console.warn(
-            `[affiliate-pipeline] SearchItems ${searchIndex} "${query}":`,
-            errors.join('; '),
-          )
-          if (isFatalPaapiError(errors)) {
-            return { ok: false, errors, fatal: true }
-          }
-          continue
-        }
+      if (result.ok) return result
 
-        const items = extractSearchItems(response)
-        const match = items.find(isValidPaapiItem)
-        if (match) {
-          const asin = String((match as { ASIN?: string }).ASIN ?? '')
-          if (asin) return { ok: true, asin, item: match }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        lastErrors = [message]
-        console.error(`[affiliate-pipeline] SearchItems ${searchIndex} failed:`, message)
-      }
+      lastErrors = result.errors
+      console.warn(
+        `[affiliate-pipeline] SearchItems ${searchIndex} "${query}":`,
+        result.errors.join('; '),
+      )
+      if (result.fatal) return result
     }
   }
 
@@ -203,7 +229,7 @@ export async function getItemByAsin(
   try {
     const response = await client.GetItemsV2(common, {
       ItemIds: [asin],
-      Resources: PAAPI_RESOURCES,
+      Resources: PAAPI_GET_RESOURCES,
     })
 
     const errors = extractPaapiErrors(response)
@@ -220,9 +246,9 @@ export async function getItemByAsin(
     }
     return { ok: true, asin, item: match }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error(`[affiliate-pipeline] GetItems ${asin} failed:`, message)
-    return { ok: false, errors: [message], fatal: false }
+    const errors = formatThrownPaapiError(err)
+    console.error(`[affiliate-pipeline] GetItems ${asin} failed:`, errors.join('; '))
+    return { ok: false, errors, fatal: isFatalPaapiError(errors) }
   }
 }
 
@@ -299,5 +325,28 @@ export async function getItemsByAsinsBatched(
 export async function testPaapiConnection(
   config: AmazonAffiliateServerConfig,
 ): Promise<PaapiLookupResult> {
-  return searchProductByKeywords('Petzl Tikka headlamp', config, 'camping')
+  const common = buildPaapiCommonParams(config)
+  const client = await getPaapiClient()
+  if (!common || !client) {
+    return {
+      ok: false,
+      errors: ['PA-API client unavailable — check access key, secret key, and associate tag'],
+      fatal: false,
+    }
+  }
+
+  const result = await runSearchItems(client, common, {
+    Keywords: 'Petzl Tikka headlamp',
+    SearchIndex: 'All',
+    ItemCount: 1,
+    Resources: PAAPI_SEARCH_RESOURCES,
+  })
+
+  if (result.ok) return result
+
+  return {
+    ok: false,
+    errors: result.errors,
+    fatal: result.fatal || isFatalPaapiError(result.errors),
+  }
 }

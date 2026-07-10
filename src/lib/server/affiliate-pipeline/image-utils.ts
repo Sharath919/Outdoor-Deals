@@ -1,4 +1,5 @@
 import type { HydratedProduct } from './types'
+import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
 
 /** True when src is empty or a stub/placeholder, not a real product image URL. */
 export function isPlaceholderImageUrl(url: string | null | undefined): boolean {
@@ -45,6 +46,7 @@ type ReviewImageProduct = {
   name?: string
   title?: string
   image_url: string | null | undefined
+  affiliate_url?: string | null
 }
 
 function productDisplayName(product: ReviewImageProduct): string {
@@ -152,6 +154,34 @@ function patchReviewBlock(
   })
 }
 
+function patchAffiliateLinksInBlock(
+  blockHtml: string,
+  precedingH2: string | null,
+  products: ReviewImageProduct[],
+): string {
+  const name = resolveReviewBlockName(blockHtml, precedingH2)
+  if (!name) return blockHtml
+
+  const match = products.find((p) => namesMatch(productDisplayName(p), name))
+  const affiliateUrl = match?.affiliate_url?.trim()
+  if (!affiliateUrl || affiliateUrl.includes('/s?k=')) return blockHtml
+
+  const escapedUrl = normalizeAffiliateUrl(affiliateUrl)
+  let patched = blockHtml.replace(
+    /(<a\b[^>]*\bhref=")[^"]*("[^>]*\bclass="[^"]*\bbtn-large\b[^"]*"[^>]*>)/gi,
+    `$1${escapedUrl}$2`,
+  )
+  patched = patched.replace(
+    /(<a\b[^>]*\bclass="[^"]*\baffiliate-link\b[^"]*"[^>]*\bhref=")[^"]*(")/gi,
+    `$1${escapedUrl}$2`,
+  )
+  patched = patched.replace(
+    /(<a\b[^>]*\bhref=")[^"]*("[^>]*\bclass="[^"]*\baffiliate-link\b[^"]*"[^>]*>)/gi,
+    `$1${escapedUrl}$2`,
+  )
+  return patched
+}
+
 /** Inject or replace review-card images inside each .product-review block. */
 export function injectReviewCardImages(html: string, products: ReviewImageProduct[]): string {
   if (!html.trim() || products.length === 0) return html
@@ -159,10 +189,14 @@ export function injectReviewCardImages(html: string, products: ReviewImageProduc
   const normalizedProducts = products.map((p) => ({
     name: productDisplayName(p),
     image_url: p.image_url ?? null,
+    affiliate_url: p.affiliate_url ?? null,
   }))
 
   if (!/\bproduct-review\b/.test(html)) {
-    return injectHydratedImagesIntoHtml(html, normalizedProducts)
+    return injectHydratedAffiliateLinksIntoHtml(
+      injectHydratedImagesIntoHtml(html, normalizedProducts),
+      normalizedProducts,
+    )
   }
 
   const replacements: Array<{ start: number; end: number; replacement: string }> = []
@@ -180,7 +214,11 @@ export function injectReviewCardImages(html: string, products: ReviewImageProduc
     const precedingH2 =
       h2Matches.length > 0 ? (h2Matches[h2Matches.length - 1][1] ?? null) : null
 
-    const patched = patchReviewBlock(blockHtml, precedingH2, products)
+    const patched = patchAffiliateLinksInBlock(
+      patchReviewBlock(blockHtml, precedingH2, products),
+      precedingH2,
+      products,
+    )
     if (patched !== blockHtml) {
       replacements.push({ start, end, replacement: patched })
     }
@@ -192,7 +230,41 @@ export function injectReviewCardImages(html: string, products: ReviewImageProduc
     result = result.slice(0, start) + replacement + result.slice(end)
   }
 
-  return injectHydratedImagesIntoHtml(result, normalizedProducts)
+  return injectHydratedAffiliateLinksIntoHtml(
+    injectHydratedImagesIntoHtml(result, normalizedProducts),
+    normalizedProducts,
+  )
+}
+
+/** Replace Amazon search-page URLs with direct product links when hydrated. */
+export function injectHydratedAffiliateLinksIntoHtml(
+  html: string,
+  products: Array<{ name?: string; affiliate_url?: string | null }>,
+): string {
+  if (!html.trim() || products.length === 0) return html
+
+  let result = html
+  for (const product of products) {
+    const affiliateUrl = product.affiliate_url?.trim()
+    const name = product.name?.trim()
+    if (!affiliateUrl || !name || affiliateUrl.includes('/s?k=')) continue
+
+    const escapedUrl = normalizeAffiliateUrl(affiliateUrl)
+    const searchPattern = new RegExp(
+      `https://www\\.amazon\\.com/s\\?k=${escapeRegExp(encodeURIComponent(name))}(?:&[^"'\\s<]*)?`,
+      'gi',
+    )
+    result = result.replace(searchPattern, escapedUrl)
+    result = result.replace(
+      new RegExp(
+        `(<a\\b[^>]*\\bhref=")https://www\\.amazon\\.com/s\\?k=[^"]*("[^>]*>[\\s\\S]*?${escapeRegExp(name)}[\\s\\S]*?<\\/a>)`,
+        'gi',
+      ),
+      `$1${escapedUrl}$2`,
+    )
+  }
+
+  return result
 }
 
 /** Replace placeholder img src values using hydrated product name ↔ alt matching. */

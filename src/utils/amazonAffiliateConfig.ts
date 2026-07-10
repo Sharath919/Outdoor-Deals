@@ -101,6 +101,15 @@ export function normalizeAffiliateUrl(href: string): string {
     .replace(/\\u0026/gi, '&')
 }
 
+export function isValidAsin(asin: string | null | undefined): boolean {
+  return /^[A-Z0-9]{10}$/i.test(asin?.trim() ?? '')
+}
+
+export function normalizeAsin(asin: string | null | undefined): string {
+  const raw = asin?.trim() ?? ''
+  return isValidAsin(raw) ? raw.toUpperCase() : ''
+}
+
 export function buildAffiliateProductUrl(asin: string, associateTag: string): string {
   const id = asin.trim()
   const tag = associateTag.trim()

@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   buildAffiliateProductUrl,
   buildAmazonSearchUrl,
+  isValidAsin,
+  normalizeAsin,
 } from '@/utils/amazonAffiliateConfig'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import type { AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
@@ -92,10 +94,14 @@ function shapeSearchFallbackProduct(
 ): HydratedProduct {
   const name = product.name?.trim() ?? ''
   const keywords = getSearchKeywords(product)
+  const asin = normalizeAsin(product.asin)
+  const affiliate_url = asin
+    ? buildAffiliateProductUrl(asin, associateTag)
+    : buildAmazonSearchUrl(keywords || name, associateTag)
   return {
     ...product,
-    asin: '',
-    affiliate_url: buildAmazonSearchUrl(keywords || name, associateTag),
+    asin,
+    affiliate_url,
     image_url: product.image_url ?? null,
     image_alt: product.image_alt ?? (name || 'Product'),
     name,
@@ -143,7 +149,7 @@ async function resolveProduct(
     }
   }
 
-  const cachedAsin = product.asin?.trim()
+  const cachedAsin = normalizeAsin(product.asin)
   if (cachedAsin) {
     const cached = nextCache[cachedAsin]
     if (cached && !isCacheStale(cached) && isValidPaapiItem(cached)) {
@@ -177,8 +183,25 @@ async function resolveProduct(
       product: shapeSearchFallbackProduct(product, associateTag),
       cache: nextCache,
     }
-  } else {
-    warnings.push('PA-API not configured — using Amazon search links')
+  } else if (!paapiConfigured) {
+    warnings.push('PA-API not configured — using stored ASIN or Amazon search links')
+  }
+
+  if (cachedAsin && isValidAsin(cachedAsin)) {
+    const directUrl = buildAffiliateProductUrl(cachedAsin, associateTag)
+    if (directUrl) {
+      warnings.push(
+        `PA-API lookup failed for "${displayName || cachedAsin}" — using stored ASIN link`,
+      )
+      return {
+        product: {
+          ...shapeSearchFallbackProduct(product, associateTag),
+          asin: cachedAsin,
+          affiliate_url: directUrl,
+        },
+        cache: nextCache,
+      }
+    }
   }
 
   return { product: shapeSearchFallbackProduct(product, associateTag), cache: nextCache }
