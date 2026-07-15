@@ -304,7 +304,7 @@ export default function AmazonAffiliateSettings() {
             className={inputClass}
             value={draft.paapiPartnerTag}
             onChange={(e) => setField('paapiPartnerTag', e.target.value)}
-            placeholder="novitekka-20"
+            placeholder="gearandsteer-20"
             autoComplete="off"
           />
           <p className={hintClass}>
