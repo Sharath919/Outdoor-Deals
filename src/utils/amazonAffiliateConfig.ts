@@ -33,6 +33,7 @@ export function buildAmazonAffiliateConfigFromRows(
     associateTag: pick(map, 'amazon_associate_tag', d.associateTag),
     paapiPartnerTag: pick(map, 'amazon_paapi_partner_tag', d.paapiPartnerTag),
     marketplace: pick(map, 'amazon_marketplace', d.marketplace),
+    creatorsApiVersion: pick(map, 'amazon_creators_api_version', d.creatorsApiVersion),
     siteName: pick(map, 'amazon_site_name', d.siteName),
     siteUrl: pick(map, 'amazon_site_url', d.siteUrl),
     accentColor: pick(map, 'amazon_accent_color', d.accentColor),
@@ -69,6 +70,10 @@ export function configToUpsertRows(
     { key: 'amazon_associate_tag', value: draft.associateTag.trim() },
     { key: 'amazon_paapi_partner_tag', value: draft.paapiPartnerTag.trim() },
     { key: 'amazon_marketplace', value: draft.marketplace.trim() || 'www.amazon.com' },
+    {
+      key: 'amazon_creators_api_version',
+      value: draft.creatorsApiVersion.trim() || '3.1',
+    },
     { key: 'amazon_site_name', value: draft.siteName.trim() },
     { key: 'amazon_site_url', value: draft.siteUrl.trim() },
     { key: 'amazon_accent_color', value: draft.accentColor.trim() },

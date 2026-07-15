@@ -68,7 +68,7 @@ export default function AmazonAffiliateSettings() {
     if (!stored) return
 
     if (!draft.associateTag.trim()) {
-      toast.error('Associate tag is required (e.g. outdoordeals-20)')
+      toast.error('Associate tag is required (e.g. gearandsteer-20)')
       return
     }
 
@@ -99,6 +99,7 @@ export default function AmazonAffiliateSettings() {
       associateTag: draft.associateTag.trim(),
       paapiPartnerTag: draft.paapiPartnerTag.trim(),
       marketplace: draft.marketplace.trim(),
+      creatorsApiVersion: draft.creatorsApiVersion.trim() || '3.1',
       siteName: draft.siteName.trim(),
       siteUrl: draft.siteUrl.trim(),
       accentColor: draft.accentColor.trim(),
@@ -114,7 +115,7 @@ export default function AmazonAffiliateSettings() {
   async function testPaapiConnection() {
     setTestingPaapi(true)
     setPaapiTestResult(null)
-    const toastId = toast.loading('Testing PA-API connection…')
+    const toastId = toast.loading('Testing Creators API connection…')
     try {
       const {
         data: { session },
@@ -133,7 +134,7 @@ export default function AmazonAffiliateSettings() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const message = data.error || `PA-API test failed (${res.status})`
+        const message = data.error || `Creators API test failed (${res.status})`
         setPaapiTestResult({ success: false, message, errors: data.errors })
         toast.error(message, { id: toastId })
         return
@@ -141,21 +142,22 @@ export default function AmazonAffiliateSettings() {
 
       setPaapiTestResult({
         success: Boolean(data.success),
-        message: data.message || (data.success ? 'PA-API connected' : 'PA-API test failed'),
+        message:
+          data.message || (data.success ? 'Creators API connected' : 'Creators API test failed'),
         errors: data.errors,
       })
 
       if (data.success) {
-        toast.success(data.message || 'PA-API connected', { id: toastId })
+        toast.success(data.message || 'Creators API connected', { id: toastId })
       } else {
-        toast.error(data.message || 'PA-API test failed', {
+        toast.error(data.message || 'Creators API test failed', {
           id: toastId,
           description: Array.isArray(data.errors) ? data.errors.slice(0, 2).join('; ') : undefined,
           duration: 12_000,
         })
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'PA-API test failed'
+      const message = err instanceof Error ? err.message : 'Creators API test failed'
       setPaapiTestResult({ success: false, message })
       toast.error(message, { id: toastId })
     } finally {
@@ -164,8 +166,8 @@ export default function AmazonAffiliateSettings() {
   }
 
   async function clearSecret(key: 'amazon_paapi_access_key' | 'amazon_paapi_secret_key') {
-    const label = key === 'amazon_paapi_access_key' ? 'access key' : 'secret key'
-    if (!confirm(`Remove the stored PA-API ${label}?`)) return
+    const label = key === 'amazon_paapi_access_key' ? 'credential ID' : 'credential secret'
+    if (!confirm(`Remove the stored Creators API ${label}?`)) return
 
     const { error } = await supabase.from('ai_config').delete().eq('key', key)
     if (error) {
@@ -185,7 +187,7 @@ export default function AmazonAffiliateSettings() {
       paapiAccessKeyInput: '',
       paapiSecretKeyInput: '',
     }))
-    toast.success(`PA-API ${label} removed`)
+    toast.success(`Creators API ${label} removed`)
   }
 
   if (loading) {
@@ -209,22 +211,22 @@ export default function AmazonAffiliateSettings() {
             )}
           </li>
           <li>
-            PA-API partner tag:{' '}
+            API partner tag:{' '}
             {(draft.paapiPartnerTag.trim() || draft.associateTag.trim()) ? (
               <code className="text-gold">
                 {draft.paapiPartnerTag.trim() || draft.associateTag.trim()}
               </code>
             ) : (
-              <span className="text-amber-400/90">Not set — must match your PA-API credentials</span>
+              <span className="text-amber-400/90">Not set — must match your Creators API credentials</span>
             )}
           </li>
           <li>
-            PA-API:{' '}
+            Creators API:{' '}
             {paapiReady ? (
               <span className="text-green-400">Configured — product images &amp; prices can auto-fetch</span>
             ) : manualMode ? (
               <span className="text-amber-400/90">
-                Manual mode — add PA-API keys below or paste product data in articles
+                Manual mode — add Creators API credentials below or paste product data in articles
               </span>
             ) : (
               <span className="text-foreground/45">Waiting for associate tag</span>
@@ -239,7 +241,7 @@ export default function AmazonAffiliateSettings() {
               disabled={testingPaapi}
               className="font-inter text-xs px-3 py-1.5 rounded-lg border border-gold/40 text-gold hover:bg-gold/10 disabled:opacity-50"
             >
-              {testingPaapi ? 'Testing…' : 'Test PA-API connection'}
+              {testingPaapi ? 'Testing…' : 'Test Creators API connection'}
             </button>
             {paapiTestResult && (
               <span
@@ -289,33 +291,46 @@ export default function AmazonAffiliateSettings() {
 
       <section className="rounded-xl p-6 glass border border-white/10 space-y-5">
         <div>
-          <h2 className="font-cinzel text-sm text-gold">Product Advertising API (PA-API)</h2>
+          <h2 className="font-cinzel text-sm text-gold">Creators API (product data)</h2>
           <p className={`${hintClass} leading-relaxed`}>
-            Optional. Requires 3 qualifying sales in 180 days on the PA-API account. The{' '}
-            <strong className="font-normal text-foreground/60">PA-API partner tag</strong> must belong
-            to the same Associates account as your access/secret keys. Link tracking can use a
+            Replaces the deprecated PA-API. Requires Creators API credentials from Associates
+            Central. The <strong className="font-normal text-foreground/60">API partner tag</strong>{' '}
+            must belong to the same Associates account as the credentials. Link tracking can use a
             different tag (set above).
           </p>
         </div>
 
-        <div>
-          <label className={labelClass}>PA-API partner tag</label>
-          <input
-            className={inputClass}
-            value={draft.paapiPartnerTag}
-            onChange={(e) => setField('paapiPartnerTag', e.target.value)}
-            placeholder="gearandsteer-20"
-            autoComplete="off"
-          />
-          <p className={hintClass}>
-            Must match the Associates account that owns the keys below. Leave blank to use the link
-            tracking tag.
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>API partner tag</label>
+            <input
+              className={inputClass}
+              value={draft.paapiPartnerTag}
+              onChange={(e) => setField('paapiPartnerTag', e.target.value)}
+              placeholder="novitekka-20"
+              autoComplete="off"
+            />
+            <p className={hintClass}>
+              Must match the Associates account that owns the credentials below. Leave blank to use
+              the link tracking tag.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass}>Credential version</label>
+            <input
+              className={inputClass}
+              value={draft.creatorsApiVersion}
+              onChange={(e) => setField('creatorsApiVersion', e.target.value)}
+              placeholder="3.1"
+              autoComplete="off"
+            />
+            <p className={hintClass}>e.g. 3.1 (NA), 3.2 (EU), 3.3 (FE)</p>
+          </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>Access key</label>
+            <label className={labelClass}>Credential ID</label>
             <p className="font-inter text-xs text-foreground/45 mb-2">
               Status:{' '}
               {stored?.hasPaapiAccessKey ? (
@@ -329,7 +344,11 @@ export default function AmazonAffiliateSettings() {
               className={inputClass}
               value={draft.paapiAccessKeyInput}
               onChange={(e) => setField('paapiAccessKeyInput', e.target.value)}
-              placeholder={stored?.hasPaapiAccessKey ? 'Enter new key to replace…' : 'AKIA…'}
+              placeholder={
+                stored?.hasPaapiAccessKey
+                  ? 'Enter new ID to replace…'
+                  : 'amzn1.application-oa2-client.…'
+              }
               autoComplete="off"
             />
             <div className="flex flex-wrap gap-2 mt-2">
@@ -346,14 +365,14 @@ export default function AmazonAffiliateSettings() {
                   onClick={() => clearSecret('amazon_paapi_access_key')}
                   className="font-inter text-xs px-3 py-1.5 rounded-lg border border-red-400/40 text-red-300/90"
                 >
-                  Remove access key
+                  Remove credential ID
                 </button>
               )}
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Secret key</label>
+            <label className={labelClass}>Credential secret</label>
             <p className="font-inter text-xs text-foreground/45 mb-2">
               Status:{' '}
               {stored?.hasPaapiSecretKey ? (
@@ -367,7 +386,9 @@ export default function AmazonAffiliateSettings() {
               className={inputClass}
               value={draft.paapiSecretKeyInput}
               onChange={(e) => setField('paapiSecretKeyInput', e.target.value)}
-              placeholder={stored?.hasPaapiSecretKey ? 'Enter new key to replace…' : 'Secret key'}
+              placeholder={
+                stored?.hasPaapiSecretKey ? 'Enter new secret to replace…' : 'amzn1.oa2-cs.v1.…'
+              }
               autoComplete="off"
             />
             <div className="flex flex-wrap gap-2 mt-2">
@@ -384,7 +405,7 @@ export default function AmazonAffiliateSettings() {
                   onClick={() => clearSecret('amazon_paapi_secret_key')}
                   className="font-inter text-xs px-3 py-1.5 rounded-lg border border-red-400/40 text-red-300/90"
                 >
-                  Remove secret key
+                  Remove credential secret
                 </button>
               )}
             </div>

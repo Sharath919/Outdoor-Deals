@@ -1,6 +1,6 @@
 /**
  * Server-only Amazon affiliate config reader.
- * Env vars win over ai_config (for Vercel overrides).
+ * Env vars win over ai_config (for Railway overrides).
  */
 
 import { createServerSupabase } from '@/lib/supabase'
@@ -32,17 +32,27 @@ export async function readAmazonAffiliateServerConfig(): Promise<AmazonAffiliate
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]))
   const publicConfig = buildAmazonAffiliateConfigFromRows(rows)
 
-  const accessKey = envOr(configValue(map.amazon_paapi_access_key), 'PAAPI_ACCESS_KEY')
-  const secretKey = envOr(configValue(map.amazon_paapi_secret_key), 'PAAPI_SECRET_KEY')
+  // Prefer Creators env names; fall back to legacy PAAPI_* for compatibility.
+  const accessKey =
+    envOr(configValue(map.amazon_paapi_access_key), 'CREATORS_API_CREDENTIAL_ID') ||
+    envOr(configValue(map.amazon_paapi_access_key), 'PAAPI_ACCESS_KEY')
+  const secretKey =
+    envOr(configValue(map.amazon_paapi_secret_key), 'CREATORS_API_CREDENTIAL_SECRET') ||
+    envOr(configValue(map.amazon_paapi_secret_key), 'PAAPI_SECRET_KEY')
 
   return {
-    associateTag: envOr(publicConfig.associateTag, 'ASSOCIATE_TAG') ||
+    associateTag:
+      envOr(publicConfig.associateTag, 'ASSOCIATE_TAG') ||
       envOr(publicConfig.associateTag, 'AMAZON_ASSOCIATE_TAG'),
     paapiPartnerTag:
       envOr(publicConfig.paapiPartnerTag, 'PAAPI_PARTNER_TAG') ||
       publicConfig.paapiPartnerTag.trim() ||
       publicConfig.associateTag.trim(),
     marketplace: envOr(publicConfig.marketplace, 'MARKETPLACE') || 'www.amazon.com',
+    creatorsApiVersion:
+      envOr(publicConfig.creatorsApiVersion, 'CREATORS_API_VERSION') ||
+      publicConfig.creatorsApiVersion ||
+      '3.1',
     siteName: envOr(publicConfig.siteName, 'SITE_NAME'),
     siteUrl: envOr(publicConfig.siteUrl, 'SITE_URL'),
     accentColor: envOr(publicConfig.accentColor, 'ACCENT_COLOR'),
@@ -63,9 +73,7 @@ function configValue(raw: unknown): string {
 export async function isAmazonPaapiAvailable(): Promise<boolean> {
   const config = await readAmazonAffiliateServerConfig()
   return Boolean(
-    config.paapiAccessKey &&
-      config.paapiSecretKey &&
-      resolvePaapiPartnerTag(config),
+    config.paapiAccessKey && config.paapiSecretKey && resolvePaapiPartnerTag(config),
   )
 }
 

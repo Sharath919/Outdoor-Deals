@@ -8,21 +8,19 @@ export type PaapiCommonParams = {
   PartnerTag: string
   PartnerType: 'Associates'
   Marketplace: string
+  Version: string
 }
 
-const PAAPI_SEARCH_RESOURCES = [
-  'Images.Primary.Large',
-  'Images.Primary.Medium',
-  'ItemInfo.Title',
-  'ItemInfo.ByLineInfo',
+const CREATORS_SEARCH_RESOURCES = [
+  'images.primary.large',
+  'images.primary.medium',
+  'itemInfo.title',
+  'itemInfo.byLineInfo',
 ]
 
-const PAAPI_GET_RESOURCES = [
-  ...PAAPI_SEARCH_RESOURCES,
-  'OffersV2.Listings.Price',
-]
+const CREATORS_GET_RESOURCES = [...CREATORS_SEARCH_RESOURCES, 'offersV2.listings.price']
 
-/** Valid US marketplace SearchIndex values (see PA-API locale reference). */
+/** Valid US marketplace SearchIndex values (see catalog SearchItems docs). */
 const SEARCH_INDEXES = ['All', 'SportsAndOutdoors', 'Apparel', 'GardenAndOutdoor'] as const
 
 const CATEGORY_SEARCH_TERMS: Record<string, string> = {
@@ -39,17 +37,6 @@ const CATEGORY_SEARCH_TERMS: Record<string, string> = {
   'general-gear': 'outdoor gear',
 }
 
-type PaapiClient = {
-  SearchItemsV2: (
-    common: PaapiCommonParams,
-    request: Record<string, unknown>,
-  ) => Promise<unknown>
-  GetItemsV2: (
-    common: PaapiCommonParams,
-    request: Record<string, unknown>,
-  ) => Promise<unknown>
-}
-
 export type PaapiLookupSuccess = {
   ok: true
   asin: string
@@ -64,18 +51,20 @@ export type PaapiLookupFailure = {
 
 export type PaapiLookupResult = PaapiLookupSuccess | PaapiLookupFailure
 
-let clientPromise: Promise<PaapiClient | null> | null = null
+type TokenCache = {
+  accessToken: string
+  expiresAtMs: number
+  cacheKey: string
+}
 
-async function getPaapiClient(): Promise<PaapiClient | null> {
-  if (!clientPromise) {
-    clientPromise = import('amazon-paapi')
-      .then((mod) => (mod.default ?? mod) as PaapiClient)
-      .catch((err) => {
-        console.warn('[affiliate-pipeline] PA-API import failed:', err)
-        return null
-      })
-  }
-  return clientPromise
+let tokenCache: TokenCache | null = null
+
+function tokenEndpointForVersion(version: string): string {
+  const majorMinor = version.trim()
+  if (majorMinor.startsWith('3.2')) return 'https://api.amazon.co.uk/auth/o2/token'
+  if (majorMinor.startsWith('3.3')) return 'https://api.amazon.co.jp/auth/o2/token'
+  // v3.1 (NA) and unknown fallbacks
+  return 'https://api.amazon.com/auth/o2/token'
 }
 
 export function buildPaapiCommonParams(
@@ -89,59 +78,126 @@ export function buildPaapiCommonParams(
     PartnerTag: partnerTag,
     PartnerType: 'Associates',
     Marketplace: config.marketplace || 'www.amazon.com',
+    Version: config.creatorsApiVersion?.trim() || '3.1',
   }
 }
 
 export function extractPaapiErrors(response: unknown): string[] {
   const errors =
-    (response as { Errors?: Array<{ Code?: string; Message?: string }> })?.Errors ?? []
+    (response as { Errors?: Array<{ Code?: string; Message?: string }> })?.Errors ??
+    (response as { errors?: Array<{ code?: string; message?: string }> })?.errors ??
+    []
   return errors
-    .map((e) => `${e.Code ?? 'Error'}: ${e.Message ?? 'Unknown PA-API error'}`)
+    .map((e) => {
+      const code = ('Code' in e ? e.Code : e.code) ?? 'Error'
+      const message = ('Message' in e ? e.Message : e.message) ?? 'Unknown Creators API error'
+      return `${code}: ${message}`
+    })
     .filter(Boolean)
 }
 
 function isFatalPaapiError(errors: string[]): boolean {
-  return errors.some((e) => /Invalid|Access|Signature|Credential|Associate|NotEligible|Quota/i.test(e))
+  return errors.some((e) =>
+    /Invalid|Access|Signature|Credential|Associate|NotEligible|Quota|Unauthorized|Forbidden|deprecate/i.test(
+      e,
+    ),
+  )
 }
 
 function formatThrownPaapiError(err: unknown): string[] {
-  const message = err instanceof Error ? err.message : String(err)
-  const body = (err as { response?: { body?: unknown } })?.response?.body
-  const amazonErrors = extractPaapiErrors(body)
-  if (amazonErrors.length) return amazonErrors
-  return [message]
+  if (err instanceof Error && err.message) return [err.message]
+  return [String(err)]
 }
 
-async function runSearchItems(
-  client: PaapiClient,
-  common: PaapiCommonParams,
-  request: Record<string, unknown>,
-): Promise<PaapiLookupResult> {
-  try {
-    const response = await client.SearchItemsV2(common, request)
-    const errors = extractPaapiErrors(response)
-    if (errors.length) {
-      return { ok: false, errors, fatal: isFatalPaapiError(errors) }
-    }
+/** Normalize Creators API camelCase items into the PascalCase shape used by hydration. */
+export function normalizeCreatorsItem(raw: Record<string, unknown>): PaapiItem {
+  const images = raw.images as
+    | {
+        primary?: {
+          large?: { url?: string; height?: number; width?: number }
+          medium?: { url?: string; height?: number; width?: number }
+        }
+      }
+    | undefined
+  const itemInfo = raw.itemInfo as
+    | {
+        title?: { displayValue?: string }
+        byLineInfo?: { brand?: { displayValue?: string } }
+      }
+    | undefined
+  const offersV2 = raw.offersV2 as
+    | {
+        listings?: Array<{
+          price?: {
+            displayAmount?: string
+            money?: { displayAmount?: string; amount?: number; currency?: string }
+          }
+        }>
+      }
+    | undefined
 
-    const items = extractSearchItems(response)
-    const match = items.find(isValidPaapiItem)
-    if (!match) {
-      return { ok: false, errors: ['No matching catalog items in search response'], fatal: false }
-    }
+  const listings =
+    offersV2?.listings?.map((listing) => {
+      const displayAmount =
+        listing.price?.money?.displayAmount ?? listing.price?.displayAmount ?? undefined
+      return {
+        Price: {
+          DisplayAmount: displayAmount,
+          Money: displayAmount
+            ? {
+                DisplayAmount: displayAmount,
+                Amount: listing.price?.money?.amount,
+                Currency: listing.price?.money?.currency,
+              }
+            : undefined,
+        },
+      }
+    }) ?? []
 
-    const asin = String((match as { ASIN?: string }).ASIN ?? '')
-    if (!asin) {
-      return { ok: false, errors: ['Search response missing ASIN'], fatal: false }
-    }
-    return { ok: true, asin, item: match }
-  } catch (err) {
-    return { ok: false, errors: formatThrownPaapiError(err), fatal: false }
+  return {
+    ASIN: raw.asin,
+    DetailPageURL: raw.detailPageURL,
+    Images: {
+      Primary: {
+        Large: images?.primary?.large?.url
+          ? {
+              URL: images.primary.large.url,
+              Height: images.primary.large.height,
+              Width: images.primary.large.width,
+            }
+          : undefined,
+        Medium: images?.primary?.medium?.url
+          ? {
+              URL: images.primary.medium.url,
+              Height: images.primary.medium.height,
+              Width: images.primary.medium.width,
+            }
+          : undefined,
+      },
+    },
+    ItemInfo: {
+      Title: itemInfo?.title?.displayValue
+        ? { DisplayValue: itemInfo.title.displayValue }
+        : undefined,
+      ByLineInfo: itemInfo?.byLineInfo?.brand?.displayValue
+        ? { Brand: { DisplayValue: itemInfo.byLineInfo.brand.displayValue } }
+        : undefined,
+    },
+    OffersV2: listings.length ? { Listings: listings } : undefined,
   }
 }
 
 export function extractSearchItems(response: unknown): PaapiItem[] {
-  return (response as { SearchResult?: { Items?: PaapiItem[] } })?.SearchResult?.Items ?? []
+  const camel =
+    (response as { searchResult?: { items?: Record<string, unknown>[] } })?.searchResult?.items ??
+    []
+  if (camel.length) return camel.map((item) => normalizeCreatorsItem(item))
+
+  return (
+    (response as { SearchResult?: { Items?: PaapiItem[] } })?.SearchResult?.Items ?? []
+  ).map((item) =>
+    item.Images || item.ItemInfo ? item : normalizeCreatorsItem(item as Record<string, unknown>),
+  )
 }
 
 export function isValidPaapiItem(item: PaapiItem | undefined): boolean {
@@ -177,15 +233,129 @@ export function buildSearchQueries(keywords: string, category?: string | null): 
   return [...queries]
 }
 
+async function getAccessToken(common: PaapiCommonParams): Promise<string> {
+  const cacheKey = `${common.AccessKey}:${common.Version}`
+  const now = Date.now()
+  if (tokenCache && tokenCache.cacheKey === cacheKey && tokenCache.expiresAtMs > now + 60_000) {
+    return tokenCache.accessToken
+  }
+
+  const endpoint = tokenEndpointForVersion(common.Version)
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      client_id: common.AccessKey,
+      client_secret: common.SecretKey,
+      scope: 'creatorsapi::default',
+    }),
+  })
+
+  const json = (await response.json().catch(() => ({}))) as {
+    access_token?: string
+    expires_in?: number
+    error?: string
+    error_description?: string
+  }
+
+  if (!response.ok || !json.access_token) {
+    const detail = json.error_description || json.error || `HTTP ${response.status}`
+    throw new Error(`Creators API token failed: ${detail}`)
+  }
+
+  const expiresInSec = typeof json.expires_in === 'number' ? json.expires_in : 3600
+  tokenCache = {
+    accessToken: json.access_token,
+    expiresAtMs: now + expiresInSec * 1000,
+    cacheKey,
+  }
+  return json.access_token
+}
+
+async function creatorsRequest(
+  common: PaapiCommonParams,
+  path: '/catalog/v1/searchItems' | '/catalog/v1/getItems',
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  const accessToken = await getAccessToken(common)
+  const response = await fetch(`https://creatorsapi.amazon${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'x-marketplace': common.Marketplace,
+    },
+    body: JSON.stringify({
+      ...payload,
+      partnerTag: common.PartnerTag,
+      partnerType: common.PartnerType,
+      marketplace: common.Marketplace,
+    }),
+  })
+
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    const errors = extractPaapiErrors(json)
+    if (errors.length) {
+      const error = new Error(errors.join('; ')) as Error & { response?: { body: unknown } }
+      error.response = { body: json }
+      throw error
+    }
+    throw new Error(`Creators API ${path} failed (HTTP ${response.status})`)
+  }
+
+  return json
+}
+
+async function runSearchItems(
+  common: PaapiCommonParams,
+  request: Record<string, unknown>,
+): Promise<PaapiLookupResult> {
+  try {
+    const response = await creatorsRequest(common, '/catalog/v1/searchItems', request)
+    const errors = extractPaapiErrors(response)
+    if (errors.length) {
+      return { ok: false, errors, fatal: isFatalPaapiError(errors) }
+    }
+
+    const items = extractSearchItems(response)
+    const match = items.find(isValidPaapiItem)
+    if (!match) {
+      return { ok: false, errors: ['No matching catalog items in search response'], fatal: false }
+    }
+
+    const asin = String((match as { ASIN?: string }).ASIN ?? '')
+    if (!asin) {
+      return { ok: false, errors: ['Search response missing ASIN'], fatal: false }
+    }
+    return { ok: true, asin, item: match }
+  } catch (err) {
+    const errors = formatThrownPaapiError(err)
+    const body = (err as { response?: { body?: unknown } })?.response?.body
+    const amazonErrors = extractPaapiErrors(body)
+    return {
+      ok: false,
+      errors: amazonErrors.length ? amazonErrors : errors,
+      fatal: isFatalPaapiError(amazonErrors.length ? amazonErrors : errors),
+    }
+  }
+}
+
 export async function searchProductByKeywords(
   keywords: string,
   config: AmazonAffiliateServerConfig,
   category?: string | null,
 ): Promise<PaapiLookupResult> {
   const common = buildPaapiCommonParams(config)
-  const client = await getPaapiClient()
-  if (!common || !client) {
-    return { ok: false, errors: ['PA-API client unavailable — check access key, secret key, and associate tag'], fatal: false }
+  if (!common) {
+    return {
+      ok: false,
+      errors: [
+        'Creators API unavailable — check credential ID, credential secret, and partner tag',
+      ],
+      fatal: false,
+    }
   }
 
   const queries = buildSearchQueries(keywords, category)
@@ -193,11 +363,11 @@ export async function searchProductByKeywords(
 
   for (const query of queries) {
     for (const searchIndex of SEARCH_INDEXES) {
-      const result = await runSearchItems(client, common, {
-        Keywords: query,
-        SearchIndex: searchIndex,
-        ItemCount: 3,
-        Resources: PAAPI_SEARCH_RESOURCES,
+      const result = await runSearchItems(common, {
+        keywords: query,
+        searchIndex,
+        itemCount: 3,
+        resources: CREATORS_SEARCH_RESOURCES,
       })
 
       if (result.ok) return result
@@ -222,15 +392,21 @@ export async function getItemByAsin(
   config: AmazonAffiliateServerConfig,
 ): Promise<PaapiLookupResult> {
   const common = buildPaapiCommonParams(config)
-  const client = await getPaapiClient()
-  if (!common || !client || !asin) {
-    return { ok: false, errors: ['PA-API client unavailable — check access key, secret key, and associate tag'], fatal: false }
+  if (!common || !asin) {
+    return {
+      ok: false,
+      errors: [
+        'Creators API unavailable — check credential ID, credential secret, and partner tag',
+      ],
+      fatal: false,
+    }
   }
 
   try {
-    const response = await client.GetItemsV2(common, {
-      ItemIds: [asin],
-      Resources: PAAPI_GET_RESOURCES,
+    const response = await creatorsRequest(common, '/catalog/v1/getItems', {
+      itemIds: [asin],
+      itemIdType: 'ASIN',
+      resources: CREATORS_GET_RESOURCES,
     })
 
     const errors = extractPaapiErrors(response)
@@ -239,21 +415,28 @@ export async function getItemByAsin(
       return { ok: false, errors, fatal: isFatalPaapiError(errors) }
     }
 
-    const items =
-      (response as { ItemsResult?: { Items?: PaapiItem[] } })?.ItemsResult?.Items ?? []
+    const camelItems =
+      (response as { itemsResult?: { items?: Record<string, unknown>[] } })?.itemsResult?.items ??
+      []
+    const items = camelItems.length
+      ? camelItems.map((item) => normalizeCreatorsItem(item))
+      : ((response as { ItemsResult?: { Items?: PaapiItem[] } })?.ItemsResult?.Items ?? [])
+
     const match = items.find(isValidPaapiItem)
     if (!match) {
       return { ok: false, errors: [`No catalog item returned for ASIN ${asin}`], fatal: false }
     }
     return { ok: true, asin, item: match }
   } catch (err) {
-    const errors = formatThrownPaapiError(err)
+    const body = (err as { response?: { body?: unknown } })?.response?.body
+    const amazonErrors = extractPaapiErrors(body)
+    const errors = amazonErrors.length ? amazonErrors : formatThrownPaapiError(err)
     console.error(`[affiliate-pipeline] GetItems ${asin} failed:`, errors.join('; '))
     return { ok: false, errors, fatal: isFatalPaapiError(errors) }
   }
 }
 
-const PRICE_CHECK_RESOURCES = ['Offers.Listings.Price', 'OffersV2.Listings.Price']
+const PRICE_CHECK_RESOURCES = ['offersV2.listings.price']
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -272,12 +455,11 @@ export async function getItemsByAsinsBatched(
   options?: { batchSize?: number; delayMs?: number },
 ): Promise<PaapiBatchItemResult[]> {
   const common = buildPaapiCommonParams(config)
-  const client = await getPaapiClient()
-  if (!common || !client || asins.length === 0) {
+  if (!common || asins.length === 0) {
     return asins.map((asin) => ({
       asin,
       item: null,
-      errors: ['PA-API client unavailable'],
+      errors: ['Creators API client unavailable'],
     }))
   }
 
@@ -290,14 +472,17 @@ export async function getItemsByAsinsBatched(
 
     const batch = asins.slice(i, i + batchSize)
     try {
-      const response = await client.GetItemsV2(common, {
-        ItemIds: batch,
-        Resources: PRICE_CHECK_RESOURCES,
+      const response = await creatorsRequest(common, '/catalog/v1/getItems', {
+        itemIds: batch,
+        itemIdType: 'ASIN',
+        resources: PRICE_CHECK_RESOURCES,
       })
 
       const errors = extractPaapiErrors(response)
-      const items =
-        (response as { ItemsResult?: { Items?: PaapiItem[] } })?.ItemsResult?.Items ?? []
+      const camelItems =
+        (response as { itemsResult?: { items?: Record<string, unknown>[] } })?.itemsResult
+          ?.items ?? []
+      const items = camelItems.map((item) => normalizeCreatorsItem(item))
       const byAsin = new Map(
         items.map((item) => [String((item as { ASIN?: string }).ASIN ?? '').toUpperCase(), item]),
       )
@@ -327,20 +512,21 @@ export async function testPaapiConnection(
   config: AmazonAffiliateServerConfig,
 ): Promise<PaapiLookupResult> {
   const common = buildPaapiCommonParams(config)
-  const client = await getPaapiClient()
-  if (!common || !client) {
+  if (!common) {
     return {
       ok: false,
-      errors: ['PA-API client unavailable — check access key, secret key, and associate tag'],
+      errors: [
+        'Creators API unavailable — check credential ID, credential secret, and partner tag',
+      ],
       fatal: false,
     }
   }
 
-  const result = await runSearchItems(client, common, {
-    Keywords: 'Petzl Tikka headlamp',
-    SearchIndex: 'All',
-    ItemCount: 1,
-    Resources: PAAPI_SEARCH_RESOURCES,
+  const result = await runSearchItems(common, {
+    keywords: 'Petzl Tikka headlamp',
+    searchIndex: 'All',
+    itemCount: 1,
+    resources: CREATORS_SEARCH_RESOURCES,
   })
 
   if (result.ok) return result

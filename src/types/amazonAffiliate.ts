@@ -1,20 +1,22 @@
-/** Amazon Associates + PA-API settings stored in ai_config. */
+/** Amazon Associates + Creators API settings stored in ai_config. */
 
 export type AmazonAffiliateConfig = {
   /** Tracking ID on affiliate links (?tag=) for this site. */
   associateTag: string
-  /** Partner tag tied to PA-API credentials (can differ from associateTag). */
+  /** Partner tag tied to Creators API credentials (can differ from associateTag). */
   paapiPartnerTag: string
   marketplace: string
+  /** Creators API credential version, e.g. 3.1 (NA LWA). */
+  creatorsApiVersion: string
   siteName: string
   siteUrl: string
   accentColor: string
   authorName: string
   authorInitials: string
   disclosureText: string
-  /** Set when access key exists in DB — never expose the key to the client. */
+  /** Set when Creators credential ID exists in DB — never expose the value to the client. */
   hasPaapiAccessKey: boolean
-  /** Set when secret key exists in DB. */
+  /** Set when Creators credential secret exists in DB. */
   hasPaapiSecretKey: boolean
 }
 
@@ -22,6 +24,7 @@ export const AMAZON_CONFIG_KEYS = [
   'amazon_associate_tag',
   'amazon_paapi_partner_tag',
   'amazon_marketplace',
+  'amazon_creators_api_version',
   'amazon_paapi_access_key',
   'amazon_paapi_secret_key',
   'amazon_site_name',
@@ -41,6 +44,7 @@ export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
   associateTag: '',
   paapiPartnerTag: '',
   marketplace: 'www.amazon.com',
+  creatorsApiVersion: '3.1',
   siteName: 'GearAndSteer',
   siteUrl: 'https://gearandsteer.com',
   accentColor: '#2D4A2B',
@@ -50,7 +54,7 @@ export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
     'We may earn a commission from qualifying purchases, but our recommendations are independent.',
 }
 
-/** Server-side only — includes secret keys. */
+/** Server-side only — includes secret keys (Creators credential ID/secret). */
 export type AmazonAffiliateSecrets = {
   paapiAccessKey: string
   paapiSecretKey: string

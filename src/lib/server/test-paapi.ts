@@ -41,7 +41,7 @@ export async function handleTestPaapi(request: Request): Promise<Response> {
       success: false,
       configured: false,
       message:
-        'PA-API not fully configured — save access key, secret key, and PA-API partner tag first',
+        'Creators API not fully configured — save credential ID, credential secret, and API partner tag first',
     })
   }
 
@@ -58,7 +58,7 @@ export async function handleTestPaapi(request: Request): Promise<Response> {
     return jsonResponse({
       success: true,
       configured: true,
-      message: 'PA-API connected — test search returned a product with image data',
+      message: 'Creators API connected — test search returned a product with image data',
       asin: result.asin,
       title: titleObj?.DisplayValue ?? null,
       image_url: imageUrl,
@@ -75,10 +75,10 @@ export async function handleTestPaapi(request: Request): Promise<Response> {
     fatal: result.fatal,
     errors: result.errors,
     message: result.fatal
-      ? `PA-API credentials or associate eligibility failed${detail ? ` — ${detail}` : ''}`
+      ? `Creators API credentials or partner tag failed${detail ? ` — ${detail}` : ''}`
       : detail
-        ? `PA-API search failed — ${detail}`
-        : 'PA-API request completed but test search returned no product',
+        ? `Creators API search failed — ${detail}`
+        : 'Creators API request completed but test search returned no product',
   })
 }
 

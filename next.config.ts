@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
   output: 'standalone',
-  serverExternalPackages: ['amazon-paapi'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },

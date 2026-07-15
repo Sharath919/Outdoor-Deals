@@ -225,7 +225,7 @@ export async function hydrateProducts(
     warnings.push('No associate tag configured — affiliate URLs may be incomplete')
   } else if (!paapiConfigured) {
     warnings.push(
-      'PA-API not fully configured — save access key, secret key, and associate tag in Admin → Amazon Affiliate',
+      'Creators API not fully configured — save credential ID, credential secret, and partner tag in Admin → Amazon Affiliate',
     )
   }
 
