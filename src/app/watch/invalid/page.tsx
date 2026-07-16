@@ -4,7 +4,7 @@ import SiteHeader from '@/components/SiteHeader'
 export default function WatchInvalidPage() {
   return (
     <div className="guide-page watch-page">
-      <SiteHeader variant="guide" />
+      <SiteHeader />
       <main className="watch-main">
         <h1>Link expired or invalid</h1>
         <p>

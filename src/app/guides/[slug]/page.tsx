@@ -1,13 +1,10 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
+import SiteFooter from '@/components/SiteFooter'
 import QuickPicks from '@/components/guide/QuickPicks'
 import PriceWatchMount from '@/components/PriceWatchMount'
 import RedditWelcome from '@/components/guide/RedditWelcome'
 import AuthorBio from '@/components/guide/AuthorBio'
-import {
-  EDITORIAL_SITE_NAME,
-} from '@/config/editorial'
 import { outdoorCategoryLabel } from '@/config/outdoorCategories'
 import {
   getArticleProducts,
@@ -16,7 +13,10 @@ import {
 } from '@/lib/articles-server'
 import { getTrackedPricesForAsins } from '@/lib/server/deals-server'
 import { renderCompareTable } from '@/lib/server/affiliate-pipeline/render'
-import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
+import {
+  readAmazonAffiliateServerConfig,
+  readShowProductImages,
+} from '@/lib/server/amazon-affiliate-config'
 import { SITE_URL } from '@/config/site'
 import { authorInitials, prepareGuideArticleHtml } from '@/utils/guideArticleHtml'
 import { resolveAuthorDisplayName } from '@/utils/guideAuthor'
@@ -82,10 +82,16 @@ export default async function GuideArticlePage({
   const asins = products.map((p) => p.asin).filter((a): a is string => Boolean(a))
   const trackedPrices = await getTrackedPricesForAsins(asins)
   const amazonConfig = await readAmazonAffiliateServerConfig()
-  const prepared = prepareGuideArticleHtml(article.content_html || '', products)
+  const showProductImages = await readShowProductImages()
+  const prepared = prepareGuideArticleHtml(article.content_html || '', products, {
+    showProductImages,
+  })
   const compareTableHtml =
     products.length > 0
-      ? renderCompareTable(guideProductsToHydrated(products, article.product_specs))
+      ? renderCompareTable(
+          guideProductsToHydrated(products, article.product_specs),
+          showProductImages,
+        )
       : prepared.comparisonTableHtml
   const authorName = resolveAuthorDisplayName(article)
   const disclosureText = amazonConfig.disclosureText
@@ -94,8 +100,8 @@ export default async function GuideArticlePage({
   const { bodySections } = prepared
 
   return (
-    <div className="guide-page">
-      <SiteHeader variant="guide" />
+    <div className={`guide-page${showProductImages ? '' : ' hide-product-images'}`}>
+      <SiteHeader />
 
       <header className="article-header">
         <span className="eyebrow">{eyebrow}</span>
@@ -123,7 +129,7 @@ export default async function GuideArticlePage({
         <ArticleSection html={bodySections.whoShouldSkip} />
         <ArticleSection html={bodySections.community} />
 
-        <QuickPicks products={products} />
+        <QuickPicks products={products} showImages={showProductImages} />
 
         <ArticleSection html={bodySections.faq} />
         <ArticleSection html={bodySections.buyingGuide} />
@@ -137,12 +143,7 @@ export default async function GuideArticlePage({
         <AuthorBio authorName={authorName} initials={authorInitials(authorName)} />
       </article>
 
-      <footer className="guide-footer">
-        <Link href="/" className="logo">
-          Gear<span>AndSteer</span>
-        </Link>
-        <p>Independent outdoor gear guides. © {new Date().getFullYear()} {EDITORIAL_SITE_NAME}.</p>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

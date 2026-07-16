@@ -535,10 +535,21 @@ export function segmentGuideArticleHtml(html: string): GuideArticleSegments {
   }
 }
 
+function stripImgTags(html: string): string {
+  return html.replace(/<img\b[^>]*>/gi, '')
+}
+
+export type PrepareGuideArticleOptions = {
+  /** When false, product images are removed server-side (URLs never ship to client). */
+  showProductImages?: boolean
+}
+
 export function prepareGuideArticleHtml(
   rawHtml: string,
   products: GuideProduct[] = [],
+  options: PrepareGuideArticleOptions = {},
 ): PreparedGuideArticle {
+  const showProductImages = options.showProductImages ?? true
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
   html = injectReviewCardImages(
@@ -601,6 +612,17 @@ export function prepareGuideArticleHtml(
     ),
     products,
   )
+
+  if (!showProductImages) {
+    segments.introHtml = stripImgTags(segments.introHtml)
+    if (segments.comparisonTableHtml) {
+      segments.comparisonTableHtml = stripImgTags(segments.comparisonTableHtml)
+    }
+    segments.bodyHtml = stripImgTags(segments.bodyHtml)
+    for (const key of Object.keys(bodySections) as Array<keyof GuideBodySections>) {
+      bodySections[key] = stripImgTags(bodySections[key])
+    }
+  }
 
   return {
     ...segments,

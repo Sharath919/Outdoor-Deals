@@ -134,7 +134,7 @@ function renderCompareSpecValue(raw: string | undefined): string {
   return escapeHtml(value)
 }
 
-export function renderCompareTable(products: HydratedProduct[]): string {
+export function renderCompareTable(products: HydratedProduct[], showImages = true): string {
   if (products.length === 0) return ''
 
   const specKeys = selectCompareSpecKeys(products)
@@ -143,11 +143,13 @@ export function renderCompareTable(products: HydratedProduct[]): string {
     key,
   }))
 
-  const photoRow = `
+  const photoRow = showImages
+    ? `
     <tr>
       <th class="row-label">Photo</th>
       ${products.map(renderComparePhoto).join('\n')}
     </tr>`
+    : ''
 
   const nameRow = `
     <tr>

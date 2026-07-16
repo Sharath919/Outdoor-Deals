@@ -1,10 +1,7 @@
 import Link from 'next/link'
+import { NAV_CATEGORIES } from '@/config/outdoorCategories'
 
-type SiteHeaderProps = {
-  variant?: 'home' | 'guide'
-}
-
-export default function SiteHeader({ variant = 'home' }: SiteHeaderProps) {
+export default function SiteHeader() {
   return (
     <nav className="topnav">
       <div className="topnav-inner">
@@ -13,9 +10,11 @@ export default function SiteHeader({ variant = 'home' }: SiteHeaderProps) {
         </Link>
         <div className="nav-links">
           <Link href="/guides">Guides</Link>
-          {variant === 'home' && (
-            <Link href="/login">Admin</Link>
-          )}
+          {NAV_CATEGORIES.map((category) => (
+            <Link key={category.value} href={`/guides?category=${category.value}`}>
+              {category.label}
+            </Link>
+          ))}
         </div>
       </div>
     </nav>

@@ -58,7 +58,7 @@ function UnsubscribedContent() {
 export default function WatchUnsubscribedPage() {
   return (
     <div className="guide-page watch-page">
-      <SiteHeader variant="guide" />
+      <SiteHeader />
       <Suspense fallback={<main className="watch-main"><p>Loading…</p></main>}>
         <UnsubscribedContent />
       </Suspense>

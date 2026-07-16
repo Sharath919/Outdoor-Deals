@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
+import SiteFooter from '@/components/SiteFooter'
 import { buildAffiliateUrl } from '@/lib/affiliate'
 import {
   getArticleSlugForAsin,
   getDealProduct,
   getRelatedProductsFromArticle,
 } from '@/lib/server/deals-server'
+import { readShowProductImages } from '@/lib/server/amazon-affiliate-config'
 import { SITE_URL } from '@/config/site'
 
 export const dynamic = 'force-dynamic'
@@ -39,6 +41,7 @@ export default async function DealPage({ params }: { params: Promise<{ asin: str
   const related = articleSlug
     ? await getRelatedProductsFromArticle(product.asin, articleSlug)
     : []
+  const showProductImages = await readShowProductImages()
 
   const affiliateUrl = buildAffiliateUrl(product.asin)
   const current = product.current_price != null ? Number(product.current_price) : null
@@ -47,11 +50,11 @@ export default async function DealPage({ params }: { params: Promise<{ asin: str
 
   return (
     <div className="guide-page deal-page">
-      <SiteHeader variant="guide" />
+      <SiteHeader />
 
       <main className="deal-main">
         <div className="deal-card">
-          {product.image_url && (
+          {showProductImages && product.image_url && (
             <img
               src={product.image_url}
               alt={product.product_name}
@@ -94,7 +97,7 @@ export default async function DealPage({ params }: { params: Promise<{ asin: str
             <div className="deal-related-grid">
               {related.map((item) => (
                 <div key={item.asin} className="deal-related-item">
-                  {item.image_url && (
+                  {showProductImages && item.image_url && (
                     <img src={item.image_url} alt={item.title} className="deal-related-img" />
                   )}
                   <p className="deal-related-name">{item.title}</p>
@@ -112,6 +115,8 @@ export default async function DealPage({ params }: { params: Promise<{ asin: str
           </section>
         )}
       </main>
+
+      <SiteFooter />
     </div>
   )
 }

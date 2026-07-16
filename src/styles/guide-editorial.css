@@ -83,7 +83,9 @@
 
 .guide-page .nav-links {
   display: flex;
-  gap: 28px;
+  flex-wrap: wrap;
+  gap: 22px;
+  justify-content: flex-end;
 }
 
 .guide-page .nav-links a {
@@ -1170,6 +1172,133 @@
 
 .guide-page .guide-footer a {
   color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Shared site footer ── */
+.guide-page .site-footer {
+  text-align: left;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.guide-page .site-footer-inner {
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.guide-page .site-footer-brand {
+  max-width: 640px;
+}
+
+.guide-page .site-footer .site-footer-disclosure {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.guide-page .site-footer-meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.guide-page .site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: flex-end;
+}
+
+.guide-page .site-footer-links a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.guide-page .site-footer-links a:hover {
+  color: #8fb28c;
+}
+
+.guide-page .site-footer .site-footer-copy {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .guide-page .site-footer-inner {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .guide-page .site-footer-meta {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .guide-page .site-footer-links {
+    justify-content: flex-start;
+  }
+}
+
+/* ── Home category strip ── */
+.guide-page .home-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 40px;
+}
+
+.guide-page .home-categories a {
+  text-decoration: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: var(--bg-card);
+  transition: all 0.15s ease;
+}
+
+.guide-page .home-categories a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.guide-page .home-featured {
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: 0 24px 24px;
+}
+
+.guide-page .home-featured-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
+}
+
+/* ── Product images hidden (pre-approval affiliate review) ── */
+.guide-page.hide-product-images .product-image,
+.guide-page.hide-product-images .product-image-wrap {
+  display: none;
+}
+
+.guide-page.hide-product-images .product-review-header {
+  grid-template-columns: 1fr;
 }
 
 .guide-page .article-section-accent-divider {

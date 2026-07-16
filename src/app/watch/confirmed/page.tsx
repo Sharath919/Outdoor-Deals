@@ -31,7 +31,7 @@ export default async function WatchConfirmedPage({
 
   return (
     <div className="guide-page watch-page">
-      <SiteHeader variant="guide" />
+      <SiteHeader />
       <main className="watch-main">
         <h1>You&apos;re watching {productName}</h1>
         <p>

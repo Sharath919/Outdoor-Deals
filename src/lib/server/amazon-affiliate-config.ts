@@ -9,7 +9,11 @@ import {
   isPaapiConfigured,
   resolvePaapiPartnerTag,
 } from '@/utils/amazonAffiliateConfig'
-import { AMAZON_CONFIG_KEYS, type AmazonAffiliateServerConfig } from '@/types/amazonAffiliate'
+import {
+  AMAZON_CONFIG_KEYS,
+  SHOW_PRODUCT_IMAGES_KEY,
+  type AmazonAffiliateServerConfig,
+} from '@/types/amazonAffiliate'
 
 function envOr(stored: string, envKey: string): string {
   const fromEnv = process.env[envKey]?.trim()
@@ -75,6 +79,26 @@ export async function isAmazonPaapiAvailable(): Promise<boolean> {
   return Boolean(
     config.paapiAccessKey && config.paapiSecretKey && resolvePaapiPartnerTag(config),
   )
+}
+
+/**
+ * Global toggle for displaying Amazon product images.
+ * Defaults to false (hidden) so images stay off until an admin enables them
+ * — e.g. after Amazon Associates approval and once our own API keys are live.
+ */
+export async function readShowProductImages(): Promise<boolean> {
+  const supabase = createServerSupabase()
+  if (!supabase) return false
+
+  const { data } = await supabase
+    .from('ai_config')
+    .select('value')
+    .eq('key', SHOW_PRODUCT_IMAGES_KEY)
+    .maybeSingle()
+
+  if (!data) return false
+  const raw = typeof data.value === 'string' ? data.value : JSON.stringify(data.value)
+  return raw.trim().toLowerCase() === 'true'
 }
 
 export { isPaapiConfigured }

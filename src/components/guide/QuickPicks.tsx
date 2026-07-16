@@ -6,9 +6,10 @@ const PICK_LABELS = ['Best for Reliability', 'Best for Versatility', 'Best Value
 
 type QuickPicksProps = {
   products: GuideProduct[]
+  showImages?: boolean
 }
 
-export default function QuickPicks({ products }: QuickPicksProps) {
+export default function QuickPicks({ products, showImages = true }: QuickPicksProps) {
   const picks = products.slice(0, 3)
   if (picks.length === 0) return null
 
@@ -26,17 +27,19 @@ export default function QuickPicks({ products }: QuickPicksProps) {
 
           return (
             <div key={product.title} className="pick-card">
-              <div className="pick-image">
-                <span className="award-pill" style={pillStyle}>
-                  {product.award_label ?? (index === 0 ? 'Top Pick' : index === 1 ? 'Versatile' : 'Budget')}
-                </span>
-                {product.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={product.image_url} alt={product.title} />
-                ) : (
-                  product.title
-                )}
-              </div>
+              {showImages && (
+                <div className="pick-image">
+                  <span className="award-pill" style={pillStyle}>
+                    {product.award_label ?? (index === 0 ? 'Top Pick' : index === 1 ? 'Versatile' : 'Budget')}
+                  </span>
+                  {product.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={product.image_url} alt={product.title} />
+                  ) : (
+                    product.title
+                  )}
+                </div>
+              )}
               <div className="pick-label">{PICK_LABELS[index] ?? 'Our pick'}</div>
               <h4 className="pick-name">{product.title}</h4>
               <a

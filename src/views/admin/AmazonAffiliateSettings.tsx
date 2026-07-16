@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import {
   AMAZON_CONFIG_KEYS,
   DEFAULT_AMAZON_AFFILIATE_CONFIG,
+  SHOW_PRODUCT_IMAGES_KEY,
   type AmazonAffiliateConfig,
 } from '@/types/amazonAffiliate'
 import {
@@ -32,6 +33,8 @@ export default function AmazonAffiliateSettings() {
   }))
   const [showAccessKey, setShowAccessKey] = useState(false)
   const [showSecretKey, setShowSecretKey] = useState(false)
+  const [showProductImages, setShowProductImages] = useState(false)
+  const [savingImages, setSavingImages] = useState(false)
   const [testingPaapi, setTestingPaapi] = useState(false)
   const [paapiTestResult, setPaapiTestResult] = useState<{
     success: boolean
@@ -55,10 +58,39 @@ export default function AmazonAffiliateSettings() {
       const config = buildAmazonAffiliateConfigFromRows(data ?? [])
       setStored(config)
       setDraft(draftFromConfig(config))
+
+      const { data: imageRow } = await supabase
+        .from('ai_config')
+        .select('value')
+        .eq('key', SHOW_PRODUCT_IMAGES_KEY)
+        .maybeSingle()
+      const rawImage =
+        typeof imageRow?.value === 'string' ? imageRow.value : JSON.stringify(imageRow?.value ?? '')
+      setShowProductImages(rawImage.trim().toLowerCase() === 'true')
+
       setLoading(false)
     }
     load()
   }, [])
+
+  async function saveImageToggle(next: boolean) {
+    setSavingImages(true)
+    const { error } = await supabase.from('ai_config').upsert(
+      {
+        key: SHOW_PRODUCT_IMAGES_KEY,
+        value: next ? 'true' : 'false',
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' },
+    )
+    setSavingImages(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    setShowProductImages(next)
+    toast.success(next ? 'Product images are now visible' : 'Product images are now hidden')
+  }
 
   function setField<K extends keyof AmazonAffiliateDraft>(key: K, value: AmazonAffiliateDraft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -255,6 +287,43 @@ export default function AmazonAffiliateSettings() {
           </div>
         )}
       </div>
+
+      <section className="rounded-xl p-6 glass border border-white/10 space-y-4">
+        <div>
+          <h2 className="font-cinzel text-sm text-gold">Product image display</h2>
+          <p className={`${hintClass} leading-relaxed`}>
+            Controls whether Amazon product images appear across guides, comparison tables, quick
+            picks, and deal pages. Keep this <strong className="font-normal text-foreground/60">off</strong>{' '}
+            during Amazon review, then turn it on once approved and your own Creators API keys are in
+            place. Hero images are unaffected.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <span
+            className={`px-2.5 py-1 rounded-md text-xs border ${
+              showProductImages
+                ? 'border-green-400/40 text-green-300 bg-green-400/10'
+                : 'border-amber-400/40 text-amber-300 bg-amber-400/10'
+            }`}
+          >
+            {showProductImages ? 'Images visible' : 'Images hidden'}
+          </span>
+
+          <button
+            type="button"
+            disabled={savingImages}
+            onClick={() => void saveImageToggle(!showProductImages)}
+            className={`font-cinzel px-5 py-2.5 rounded-lg border ${
+              showProductImages
+                ? 'border-amber-400/40 text-amber-300 hover:bg-amber-400/10'
+                : 'border-green-400/40 text-green-300 hover:bg-green-400/10'
+            } disabled:opacity-50`}
+          >
+            {savingImages ? 'Saving…' : showProductImages ? 'Hide product images' : 'Show product images'}
+          </button>
+        </div>
+      </section>
 
       <section className="rounded-xl p-6 glass border border-white/10 space-y-5">
         <div>

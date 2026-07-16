@@ -37,6 +37,9 @@ export const AMAZON_CONFIG_KEYS = [
 
 export type AmazonConfigKey = (typeof AMAZON_CONFIG_KEYS)[number]
 
+/** Global toggle key for showing/hiding Amazon product images (stored in ai_config). */
+export const SHOW_PRODUCT_IMAGES_KEY = 'show_product_images'
+
 export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
   AmazonAffiliateConfig,
   'hasPaapiAccessKey' | 'hasPaapiSecretKey'

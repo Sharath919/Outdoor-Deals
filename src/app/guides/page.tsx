@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import SiteHeader from '@/components/SiteHeader'
+import SiteFooter from '@/components/SiteFooter'
 import GuideCard from '@/components/guide/GuideCard'
 import GuidesCategoryFilter, {
   GuidesPagination,
@@ -52,7 +53,7 @@ export default async function GuidesIndexPage({
 
   return (
     <div className="guide-page guides-index-page">
-      <SiteHeader variant="guide" />
+      <SiteHeader />
 
       <div className="guides-breadcrumb">
         <Link href="/">Home</Link>
@@ -116,12 +117,7 @@ export default async function GuidesIndexPage({
         )}
       </main>
 
-      <footer className="guide-footer">
-        <Link href="/" className="logo">
-          Gear<span>AndSteer</span>
-        </Link>
-        <p>Independent outdoor gear guides.</p>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

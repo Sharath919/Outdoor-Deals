@@ -19,6 +19,15 @@ export const OUTDOOR_CATEGORY_LABELS: Record<string, string> = Object.fromEntrie
   OUTDOOR_CATEGORY_OPTIONS.filter((o) => o.value).map((o) => [o.value, o.label]),
 )
 
+/** Curated categories surfaced in the top nav and homepage strip. */
+export const NAV_CATEGORIES = [
+  { value: 'camping', label: 'Camping' },
+  { value: 'hiking', label: 'Hiking' },
+  { value: 'backpacking', label: 'Backpacking' },
+  { value: 'footwear', label: 'Footwear' },
+  { value: 'cooking', label: 'Camp Cooking' },
+] as const
+
 export function outdoorCategoryLabel(slug: string | null | undefined): string {
   if (!slug) return ''
   return OUTDOOR_CATEGORY_LABELS[slug] ?? slug.replace(/-/g, ' ')
