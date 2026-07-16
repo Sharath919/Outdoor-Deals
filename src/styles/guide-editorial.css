@@ -13,6 +13,7 @@
   --line: #e5e1d6;
   --line-strong: #d4cfc0;
   --accent: #2d4a2b;
+  --accent-dark: #243d22;
   --accent-soft: #e8efe6;
   --cta: #c2410c;
   --cta-hover: #9a3309;
@@ -874,6 +875,13 @@
 
 .guide-page .compare-cta-btn:hover {
   background: var(--accent-dark);
+  color: white !important;
+  text-decoration: none !important;
+}
+
+.guide-page .compare-cta-btn:focus-visible {
+  outline: 2px solid var(--accent-dark);
+  outline-offset: 2px;
 }
 
 .guide-page .product-info {
