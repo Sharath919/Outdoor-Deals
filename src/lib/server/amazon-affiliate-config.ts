@@ -3,12 +3,14 @@
  * Env vars win over ai_config (for Railway overrides).
  */
 
+import { unstable_noStore as noStore } from 'next/cache'
 import { createServerSupabase } from '@/lib/supabase'
 import {
   buildAmazonAffiliateConfigFromRows,
   isPaapiConfigured,
   resolvePaapiPartnerTag,
 } from '@/utils/amazonAffiliateConfig'
+import { parseAiConfigBoolean } from '@/utils/aiConfigBoolean'
 import {
   AMAZON_CONFIG_KEYS,
   SHOW_PRODUCT_IMAGES_KEY,
@@ -87,18 +89,24 @@ export async function isAmazonPaapiAvailable(): Promise<boolean> {
  * — e.g. after Amazon Associates approval and once our own API keys are live.
  */
 export async function readShowProductImages(): Promise<boolean> {
+  // Opt out of Full Route / Data Cache so the admin toggle takes effect immediately.
+  noStore()
+
   const supabase = createServerSupabase()
   if (!supabase) return false
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('ai_config')
     .select('value')
     .eq('key', SHOW_PRODUCT_IMAGES_KEY)
     .maybeSingle()
 
-  if (!data) return false
-  const raw = typeof data.value === 'string' ? data.value : JSON.stringify(data.value)
-  return raw.trim().toLowerCase() === 'true'
+  if (error) {
+    console.error('[show_product_images] read failed:', error.message)
+    return false
+  }
+
+  return parseAiConfigBoolean(data?.value, false)
 }
 
 export { isPaapiConfigured }

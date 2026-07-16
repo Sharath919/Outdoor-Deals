@@ -16,6 +16,7 @@ import {
   isPaapiConfigured,
   type AmazonAffiliateDraft,
 } from '@/utils/amazonAffiliateConfig'
+import { parseAiConfigBoolean } from '@/utils/aiConfigBoolean'
 
 const inputClass =
   'w-full rounded-lg px-3 py-2 text-sm font-inter bg-white/5 border border-white/10 text-foreground placeholder:text-foreground/30'
@@ -64,9 +65,7 @@ export default function AmazonAffiliateSettings() {
         .select('value')
         .eq('key', SHOW_PRODUCT_IMAGES_KEY)
         .maybeSingle()
-      const rawImage =
-        typeof imageRow?.value === 'string' ? imageRow.value : JSON.stringify(imageRow?.value ?? '')
-      setShowProductImages(rawImage.trim().toLowerCase() === 'true')
+      setShowProductImages(parseAiConfigBoolean(imageRow?.value, false))
 
       setLoading(false)
     }
@@ -75,21 +74,40 @@ export default function AmazonAffiliateSettings() {
 
   async function saveImageToggle(next: boolean) {
     setSavingImages(true)
-    const { error } = await supabase.from('ai_config').upsert(
-      {
-        key: SHOW_PRODUCT_IMAGES_KEY,
-        value: next ? 'true' : 'false',
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'key' },
-    )
-    setSavingImages(false)
-    if (error) {
-      toast.error(error.message)
-      return
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        toast.error('Not signed in — refresh and log in again')
+        return
+      }
+
+      const res = await fetch('/api/admin/show-product-images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ enabled: next }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || `Failed to update image setting (${res.status})`)
+        return
+      }
+
+      setShowProductImages(Boolean(data.showProductImages))
+      toast.success(
+        data.message ||
+          (next ? 'Product images are now visible' : 'Product images are now hidden'),
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update image setting')
+    } finally {
+      setSavingImages(false)
     }
-    setShowProductImages(next)
-    toast.success(next ? 'Product images are now visible' : 'Product images are now hidden')
   }
 
   function setField<K extends keyof AmazonAffiliateDraft>(key: K, value: AmazonAffiliateDraft[K]) {
@@ -295,7 +313,7 @@ export default function AmazonAffiliateSettings() {
             Controls whether Amazon product images appear across guides, comparison tables, quick
             picks, and deal pages. Keep this <strong className="font-normal text-foreground/60">off</strong>{' '}
             during Amazon review, then turn it on once approved and your own Creators API keys are in
-            place. Hero images are unaffected.
+            place. Hero images are unaffected. Changes apply immediately (public pages are refreshed).
           </p>
         </div>
 
