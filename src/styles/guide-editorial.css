@@ -1046,31 +1046,16 @@
 }
 
 .guide-page .review-cta {
-  padding: 24px 32px 32px;
+  padding: 24px 32px 28px;
   border-top: 1px solid var(--line);
   background: var(--bg-subtle);
 }
 
-.guide-page .price-display {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.guide-page .price-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-mute);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
+/* Estimated-price rows are stripped from HTML; hide any leftover markup. */
+.guide-page .price-display,
+.guide-page .price-label,
 .guide-page .price-value {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ink);
+  display: none !important;
 }
 
 /* ── Inline CTA ── */

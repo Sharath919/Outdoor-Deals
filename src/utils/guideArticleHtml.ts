@@ -174,6 +174,16 @@ function normalizePriceLabels(html: string): string {
   return html.replace(/Price at time of writing/gi, PRODUCT_PRICE_LABEL)
 }
 
+/** Remove baked-in estimated-price rows from stored article HTML. */
+function stripEstimatedPriceBlocks(html: string): string {
+  return html
+    .replace(/<div\b[^>]*\bclass="[^"]*\bprice-display\b[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi, '')
+    .replace(
+      /<div\b[^>]*\bclass="[^"]*\bprice-label\b[^"]*"[^>]*>[\s\S]*?<\/div>\s*<div\b[^>]*\bclass="[^"]*\bprice-value\b[^"]*"[^>]*>[\s\S]*?<\/div>\s*/gi,
+      '',
+    )
+}
+
 function splitIntroParagraphs(introHtml: string): { intro: string; overflow: string } {
   const trimmed = introHtml.trim()
   if (!trimmed) return { intro: '', overflow: '' }
@@ -541,6 +551,7 @@ export function prepareGuideArticleHtml(
   const showProductImages = options.showProductImages ?? true
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
+  html = stripEstimatedPriceBlocks(html)
   html = injectReviewCardImages(
     html,
     products.map((p) => ({ title: p.title, image_url: p.image_url })),
@@ -596,8 +607,10 @@ export function prepareGuideArticleHtml(
   bodySections.community = reformatSectionToSentenceParagraphs(bodySections.community)
   bodySections.buyingGuide = reformatSectionToSentenceParagraphs(bodySections.buyingGuide)
   bodySections.products = injectPriceWatchSlotsInProducts(
-    normalizePriceLabels(
-      normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
+    stripEstimatedPriceBlocks(
+      normalizePriceLabels(
+        normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
+      ),
     ),
     products,
   )
