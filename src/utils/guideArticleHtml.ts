@@ -429,17 +429,6 @@ function buildProductReviewCard(
     }
   </div>
   <div class="review-cta">
-    ${
-      priceSpec
-        ? `<div class="price-display">
-      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
-      <span class="price-value">${priceSpec.value}</span>
-    </div>`
-        : `<div class="price-display">
-      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
-      <span class="price-value">See on Amazon</span>
-    </div>`
-    }
     <a href="${productUrl}" class="btn btn-large" target="_blank" rel="noopener noreferrer sponsored">${PRODUCT_CTA_BUTTON_HTML}</a>
     ${priceWatchSlotHtml({
       asin: products[index]?.asin ?? null,

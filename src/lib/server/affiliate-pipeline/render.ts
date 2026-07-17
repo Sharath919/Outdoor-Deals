@@ -2,7 +2,6 @@ import { marked } from 'marked'
 import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
 import {
   PRODUCT_CTA_BUTTON_HTML,
-  PRODUCT_PRICE_LABEL,
   productHeadingBlockHtml,
   textToSentenceParagraphsHtml,
 } from '@/utils/guideProductCopy'
@@ -267,10 +266,6 @@ export function renderProductReview(product: HydratedProduct, index: number): st
       </div>
 
       <div class="review-cta">
-        <div class="price-display">
-          <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
-          <span class="price-value">${escapeHtml(product.price_range || 'See on Amazon')}</span>
-        </div>
         <a href="${affiliateUrl}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
           ${PRODUCT_CTA_BUTTON_HTML}
         </a>

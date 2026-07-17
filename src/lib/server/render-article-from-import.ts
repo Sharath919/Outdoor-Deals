@@ -3,7 +3,6 @@ import type { ArticleProductSpec } from '@/lib/server/affiliate-pipeline/types'
 import { productSpecsFromImportJson } from '@/utils/claudeImportJson'
 import {
   PRODUCT_CTA_BUTTON_HTML,
-  PRODUCT_PRICE_LABEL,
   productHeadingBlockHtml,
   textToSentenceParagraphsHtml,
 } from '@/utils/guideProductCopy'
@@ -117,10 +116,6 @@ function renderProduct(
     }
   </div>
   <div class="review-cta">
-    <div class="price-display">
-      <span class="price-label">${PRODUCT_PRICE_LABEL}</span>
-      <span class="price-value">${escapeHtml(priceRange)}</span>
-    </div>
     <a href="${affiliateUrl.replace(/"/g, '&quot;')}" class="btn btn-large" target="_blank" rel="nofollow sponsored noopener">
       ${PRODUCT_CTA_BUTTON_HTML}
     </a>

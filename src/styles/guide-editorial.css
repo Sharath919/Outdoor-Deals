@@ -1733,6 +1733,7 @@
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(26, 31, 26, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  position: relative;
 }
 
 .guide-page .guides-card:hover {
@@ -1760,22 +1761,6 @@
   object-fit: cover;
 }
 
-.guide-page .guides-card-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--accent) 0%, #3d6340 100%);
-}
-
-.guide-page .guides-card-placeholder span {
-  font-family: var(--font-display);
-  font-size: 3rem;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.35);
-}
-
 .guide-page .guides-card-category {
   position: absolute;
   top: 12px;
@@ -1791,11 +1776,22 @@
   backdrop-filter: blur(4px);
 }
 
+.guide-page .guides-card-category--inline {
+  position: static;
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: 12px;
+}
+
 .guide-page .guides-card-body {
   display: flex;
   flex-direction: column;
   flex: 1;
   padding: 22px 22px 20px;
+}
+
+.guide-page .guides-card--no-media .guides-card-body {
+  padding-top: 26px;
 }
 
 .guide-page .guides-card-title {

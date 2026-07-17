@@ -21,12 +21,13 @@ type GuideCardProps = {
 export default function GuideCard({ article }: GuideCardProps) {
   const categoryLabel = outdoorCategoryLabel(article.category)
   const publishedLabel = formatPublishedDate(article.published_at)
+  const hasMedia = Boolean(article.hero_image_url)
 
   return (
-    <article className="guides-card">
+    <article className={`guides-card${hasMedia ? '' : ' guides-card--no-media'}`}>
       <Link href={`/guides/${article.slug}`} className="guides-card-link">
-        <div className="guides-card-media">
-          {article.hero_image_url ? (
+        {hasMedia ? (
+          <div className="guides-card-media">
             <Image
               src={article.hero_image_url}
               alt=""
@@ -34,14 +35,13 @@ export default function GuideCard({ article }: GuideCardProps) {
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="guides-card-image"
             />
-          ) : (
-            <div className="guides-card-placeholder" aria-hidden>
-              <span>{categoryLabel ? categoryLabel.charAt(0) : 'G'}</span>
-            </div>
-          )}
-          {categoryLabel ? <span className="guides-card-category">{categoryLabel}</span> : null}
-        </div>
+            {categoryLabel ? <span className="guides-card-category">{categoryLabel}</span> : null}
+          </div>
+        ) : null}
         <div className="guides-card-body">
+          {!hasMedia && categoryLabel ? (
+            <span className="guides-card-category guides-card-category--inline">{categoryLabel}</span>
+          ) : null}
           <h2 className="guides-card-title">{article.title}</h2>
           {article.meta_description ? (
             <p className="guides-card-excerpt">{article.meta_description}</p>
