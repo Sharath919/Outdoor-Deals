@@ -1,6 +1,8 @@
 import { createServerSupabase } from '@/lib/supabase'
 import { outdoorCategoryLabel } from '@/config/outdoorCategories'
 import type { Article } from '@/types/article'
+import { SITE_ASSOCIATE_TAG } from '@/types/amazonAffiliate'
+import { applyAssociateTagToUrl } from '@/utils/amazonAffiliateConfig'
 
 export type GuideProduct = {
   rank: number
@@ -53,7 +55,7 @@ export async function getArticleProducts(articleId: string): Promise<GuideProduc
         rank: row.rank ?? index,
         title: product.title,
         image_url: product.image_url,
-        affiliate_url: product.affiliate_url,
+        affiliate_url: applyAssociateTagToUrl(product.affiliate_url, SITE_ASSOCIATE_TAG),
         asin: product.asin ?? null,
         price_range,
         award_label: AWARD_LABELS[index],

@@ -118,7 +118,7 @@ export default function AmazonAffiliateSettings() {
     if (!stored) return
 
     if (!draft.associateTag.trim()) {
-      toast.error('Associate tag is required (e.g. gearandsteer-20)')
+      toast.error('Associate tag is required (e.g. gearnsteer-20)')
       return
     }
 
@@ -358,7 +358,7 @@ export default function AmazonAffiliateSettings() {
               className={inputClass}
               value={draft.associateTag}
               onChange={(e) => setField('associateTag', e.target.value)}
-              placeholder="gearandsteer-20"
+              placeholder="gearnsteer-20"
               autoComplete="off"
             />
             <p className={hintClass}>Used on all outbound Amazon links (?tag=) for this site</p>

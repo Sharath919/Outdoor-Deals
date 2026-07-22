@@ -2,6 +2,7 @@ import { SITE_URL } from '@/config/site'
 import {
   AMAZON_CONFIG_KEYS,
   DEFAULT_AMAZON_AFFILIATE_CONFIG,
+  SITE_ASSOCIATE_TAG,
   type AmazonAffiliateConfig,
   type AmazonConfigKey,
 } from '@/types/amazonAffiliate'
@@ -116,6 +117,62 @@ export function normalizeAffiliateUrl(href: string): string {
     .replace(/\\u0026/gi, '&')
 }
 
+/** Resolve the site link-tracking tag (never the Creators API partner tag). */
+export function resolveAssociateTag(tag?: string | null): string {
+  const trimmed = tag?.trim()
+  return trimmed || SITE_ASSOCIATE_TAG
+}
+
+/**
+ * Force `tag=` on Amazon product/search URLs to the site associate tag.
+ * Leaves non-Amazon URLs unchanged.
+ */
+export function applyAssociateTagToUrl(
+  href: string | null | undefined,
+  associateTag: string = SITE_ASSOCIATE_TAG,
+): string {
+  const raw = normalizeAffiliateUrl(href ?? '')
+  if (!raw) return raw
+  const tag = resolveAssociateTag(associateTag)
+
+  // Fast path: already the correct tag.
+  if (new RegExp(`[?&]tag=${escapeRegExp(tag)}(?:[&]|$)`, 'i').test(raw) && /amazon\./i.test(raw)) {
+    return raw
+  }
+
+  try {
+    const url = new URL(raw)
+    if (!/(^|\.)amazon\./i.test(url.hostname)) return raw
+    if (url.searchParams.get('tag') === tag) return raw
+    url.searchParams.set('tag', tag)
+    return url.toString()
+  } catch {
+    // Relative or malformed — still rewrite a bare tag= query if present.
+    if (/[?&]tag=/i.test(raw)) {
+      return raw.replace(/([?&]tag=)[^&#"'\s]*/gi, `$1${tag}`)
+    }
+    return raw
+  }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Rewrite every Amazon `tag=` occurrence in HTML (articles, tables, CTAs). */
+export function rewriteAmazonAssociateTagsInHtml(
+  html: string,
+  associateTag: string = SITE_ASSOCIATE_TAG,
+): string {
+  if (!html) return html
+  const tag = resolveAssociateTag(associateTag)
+
+  return html.replace(
+    /\bhttps?:\/\/(?:www\.)?amazon\.[^\s"'<>]*/gi,
+    (match) => applyAssociateTagToUrl(match, tag),
+  )
+}
+
 export function isValidAsin(asin: string | null | undefined): boolean {
   return /^[A-Z0-9]{10}$/i.test(asin?.trim() ?? '')
 }
@@ -127,20 +184,19 @@ export function normalizeAsin(asin: string | null | undefined): string {
 
 export function buildAffiliateProductUrl(asin: string, associateTag: string): string {
   const id = asin.trim()
-  const tag = associateTag.trim()
+  const tag = resolveAssociateTag(associateTag)
   if (!/^[A-Z0-9]{10}$/i.test(id)) {
     return ''
   }
-  if (!tag) return `https://www.amazon.com/dp/${id}`
   return `https://www.amazon.com/dp/${id}?tag=${tag}&linkCode=ogi&th=1&psc=1`
 }
 
 export function buildAmazonSearchUrl(query: string, associateTag: string): string {
   const q = query.trim()
   if (!q) return 'https://www.amazon.com'
-  const tag = associateTag.trim()
+  const tag = resolveAssociateTag(associateTag)
   const base = `https://www.amazon.com/s?k=${encodeURIComponent(q)}`
-  return tag ? `${base}&tag=${tag}` : base
+  return `${base}&tag=${tag}`
 }
 
 export { AMAZON_CONFIG_KEYS }

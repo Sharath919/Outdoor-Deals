@@ -5,6 +5,10 @@ import {
 } from '@/lib/server/affiliate-pipeline/image-utils'
 import { repairCorruptedPipelineHtml } from '@/lib/server/affiliate-pipeline/repair-html'
 import { prepareArticleContentHtml } from '@/utils/articleContentHtml'
+import {
+  applyAssociateTagToUrl,
+  rewriteAmazonAssociateTagsInHtml,
+} from '@/utils/amazonAffiliateConfig'
 import { priceWatchSlotHtml } from '@/utils/priceWatchSlot'
 import {
   PRODUCT_CTA_BUTTON_HTML,
@@ -541,6 +545,8 @@ function stripImgTags(html: string): string {
 export type PrepareGuideArticleOptions = {
   /** When false, product images are removed server-side (URLs never ship to client). */
   showProductImages?: boolean
+  /** Site Amazon associate tag for outbound links (?tag=). */
+  associateTag?: string
 }
 
 export function prepareGuideArticleHtml(
@@ -549,12 +555,18 @@ export function prepareGuideArticleHtml(
   options: PrepareGuideArticleOptions = {},
 ): PreparedGuideArticle {
   const showProductImages = options.showProductImages ?? true
+  const associateTag = options.associateTag
+  const taggedProducts = products.map((p) => ({
+    ...p,
+    affiliate_url: applyAssociateTagToUrl(p.affiliate_url, associateTag),
+  }))
   let html = repairCorruptedPipelineHtml(prepareArticleContentHtml(rawHtml))
+  html = rewriteAmazonAssociateTagsInHtml(html, associateTag)
   html = html.replace(EMPTY_AFFILIATE_CTA_RE, '')
   html = stripEstimatedPriceBlocks(html)
   html = injectReviewCardImages(
     html,
-    products.map((p) => ({ title: p.title, image_url: p.image_url })),
+    taggedProducts.map((p) => ({ title: p.title, image_url: p.image_url })),
   )
 
   const isPipelineHtml = /\bproduct-review\b/.test(html)
@@ -562,7 +574,7 @@ export function prepareGuideArticleHtml(
   const segments = segmentGuideArticleHtml(html)
 
   if (!isPipelineHtml) {
-    segments.bodyHtml = transformProductSections(segments.bodyHtml, products)
+    segments.bodyHtml = transformProductSections(segments.bodyHtml, taggedProducts)
     segments.bodyHtml = styleAffiliateLinks(segments.bodyHtml)
   } else if (!segments.introHtml && segments.bodyHtml) {
     const leading = (segments.bodyHtml.match(/^([\s\S]*?)(?=<h2\b)/i)?.[1] ?? '').trim()
@@ -575,7 +587,7 @@ export function prepareGuideArticleHtml(
     }
   }
 
-  segments.bodyHtml = linkifyProductHeadings(segments.bodyHtml, products)
+  segments.bodyHtml = linkifyProductHeadings(segments.bodyHtml, taggedProducts)
   segments.bodyHtml = reformatReviewBodyParagraphs(segments.bodyHtml)
   segments.bodyHtml = normalizeProductCtaButtons(segments.bodyHtml)
   segments.bodyHtml = normalizePriceLabels(segments.bodyHtml)
@@ -612,7 +624,7 @@ export function prepareGuideArticleHtml(
         normalizeProductCtaButtons(reformatReviewBodyParagraphs(bodySections.products)),
       ),
     ),
-    products,
+    taggedProducts,
   )
 
   if (!showProductImages) {
@@ -624,6 +636,19 @@ export function prepareGuideArticleHtml(
     for (const key of Object.keys(bodySections) as Array<keyof GuideBodySections>) {
       bodySections[key] = stripImgTags(bodySections[key])
     }
+  }
+
+  // Final pass so every Amazon link (including ones injected mid-pipeline) uses the site tag.
+  segments.introHtml = rewriteAmazonAssociateTagsInHtml(segments.introHtml, associateTag)
+  if (segments.comparisonTableHtml) {
+    segments.comparisonTableHtml = rewriteAmazonAssociateTagsInHtml(
+      segments.comparisonTableHtml,
+      associateTag,
+    )
+  }
+  segments.bodyHtml = rewriteAmazonAssociateTagsInHtml(segments.bodyHtml, associateTag)
+  for (const key of Object.keys(bodySections) as Array<keyof GuideBodySections>) {
+    bodySections[key] = rewriteAmazonAssociateTagsInHtml(bodySections[key], associateTag)
   }
 
   return {

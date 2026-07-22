@@ -85,6 +85,7 @@ export default async function GuideArticlePage({
   const showProductImages = await readShowProductImages()
   const prepared = prepareGuideArticleHtml(article.content_html || '', products, {
     showProductImages,
+    associateTag: amazonConfig.associateTag,
   })
   const compareTableHtml =
     products.length > 0

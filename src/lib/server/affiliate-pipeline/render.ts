@@ -1,5 +1,9 @@
 import { marked } from 'marked'
-import { normalizeAffiliateUrl } from '@/utils/amazonAffiliateConfig'
+import {
+  applyAssociateTagToUrl,
+  normalizeAffiliateUrl,
+  rewriteAmazonAssociateTagsInHtml,
+} from '@/utils/amazonAffiliateConfig'
 import {
   PRODUCT_CTA_BUTTON_HTML,
   productHeadingBlockHtml,
@@ -12,7 +16,7 @@ import type { HydratedProduct, HydratedArticleSpec, PipelineRenderResult } from 
 marked.setOptions({ gfm: true, breaks: true })
 
 function escapeAttr(s: string): string {
-  return normalizeAffiliateUrl(s)
+  return applyAssociateTagToUrl(normalizeAffiliateUrl(s))
     .replaceAll('&', '&amp;')
     .replaceAll('"', '&quot;')
 }
@@ -281,13 +285,15 @@ export function renderArticleBody(spec: HydratedArticleSpec): PipelineRenderResu
   const compareTableHtml = renderCompareTable(spec.products)
   const tailHtml = spec.tail_html?.trim() ?? ''
 
-  const contentHtml = [introHtml, buyersGuideHtml, reviewsHtml, tailHtml].filter(Boolean).join('\n\n')
+  const contentHtml = rewriteAmazonAssociateTagsInHtml(
+    [introHtml, buyersGuideHtml, reviewsHtml, tailHtml].filter(Boolean).join('\n\n'),
+  )
 
   return {
     contentHtml,
-    compareTableHtml,
-    introHtml,
-    buyersGuideHtml,
-    reviewsHtml,
+    compareTableHtml: rewriteAmazonAssociateTagsInHtml(compareTableHtml),
+    introHtml: rewriteAmazonAssociateTagsInHtml(introHtml),
+    buyersGuideHtml: rewriteAmazonAssociateTagsInHtml(buyersGuideHtml),
+    reviewsHtml: rewriteAmazonAssociateTagsInHtml(reviewsHtml),
   }
 }

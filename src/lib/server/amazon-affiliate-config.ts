@@ -14,6 +14,7 @@ import { parseAiConfigBoolean } from '@/utils/aiConfigBoolean'
 import {
   AMAZON_CONFIG_KEYS,
   SHOW_PRODUCT_IMAGES_KEY,
+  SITE_ASSOCIATE_TAG,
   type AmazonAffiliateServerConfig,
 } from '@/types/amazonAffiliate'
 
@@ -49,11 +50,11 @@ export async function readAmazonAffiliateServerConfig(): Promise<AmazonAffiliate
   return {
     associateTag:
       envOr(publicConfig.associateTag, 'ASSOCIATE_TAG') ||
-      envOr(publicConfig.associateTag, 'AMAZON_ASSOCIATE_TAG'),
+      envOr(publicConfig.associateTag, 'AMAZON_ASSOCIATE_TAG') ||
+      SITE_ASSOCIATE_TAG,
     paapiPartnerTag:
       envOr(publicConfig.paapiPartnerTag, 'PAAPI_PARTNER_TAG') ||
-      publicConfig.paapiPartnerTag.trim() ||
-      publicConfig.associateTag.trim(),
+      publicConfig.paapiPartnerTag.trim(),
     marketplace: envOr(publicConfig.marketplace, 'MARKETPLACE') || 'www.amazon.com',
     creatorsApiVersion:
       envOr(publicConfig.creatorsApiVersion, 'CREATORS_API_VERSION') ||

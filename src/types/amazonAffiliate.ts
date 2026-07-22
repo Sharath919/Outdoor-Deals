@@ -40,11 +40,14 @@ export type AmazonConfigKey = (typeof AMAZON_CONFIG_KEYS)[number]
 /** Global toggle key for showing/hiding Amazon product images (stored in ai_config). */
 export const SHOW_PRODUCT_IMAGES_KEY = 'show_product_images'
 
+/** Site tracking ID for outbound Amazon links (?tag=). Not the Creators API partner tag. */
+export const SITE_ASSOCIATE_TAG = 'gearnsteer-20'
+
 export const DEFAULT_AMAZON_AFFILIATE_CONFIG: Omit<
   AmazonAffiliateConfig,
   'hasPaapiAccessKey' | 'hasPaapiSecretKey'
 > = {
-  associateTag: '',
+  associateTag: SITE_ASSOCIATE_TAG,
   paapiPartnerTag: '',
   marketplace: 'www.amazon.com',
   creatorsApiVersion: '3.1',

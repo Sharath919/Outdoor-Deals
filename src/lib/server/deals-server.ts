@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase'
+import { applyAssociateTagToUrl } from '@/utils/amazonAffiliateConfig'
 
 export type DealProduct = {
   asin: string
@@ -108,7 +109,7 @@ export async function getRelatedProductsFromArticle(
         asin: p.asin,
         title: p.title,
         image_url: p.image_url,
-        affiliate_url: p.affiliate_url,
+        affiliate_url: applyAssociateTagToUrl(p.affiliate_url),
       }
     })
     .filter((p): p is DealRelatedProduct => p !== null)
