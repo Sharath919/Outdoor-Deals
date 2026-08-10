@@ -17,6 +17,7 @@ import { TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
 import { getBuiltInArticleMachinePrompt } from '@/config/defaultArticleMachinePrompts'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import { marked } from 'marked'
+import { revalidatePublishedContent } from '@/lib/server/revalidate-published-content'
 
 export const maxDuration = 180
 
@@ -873,6 +874,8 @@ export async function handlePost(request: Request): Promise<Response> {
         updated_at: new Date().toISOString(),
       } satisfies Partial<PublishingScheduleRow>)
       .eq('id', scheduleId)
+
+    revalidatePublishedContent(article.slug)
 
     return jsonResponse({
       success: true,

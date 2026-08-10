@@ -20,7 +20,6 @@ import { supabase } from '@/lib/supabase'
 import { promptKeyBadge, SCHEDULE_TEMPLATE_TYPES, TEMPLATE_HUMAN_NAMES } from '@/config/articleMachinePrompts'
 import { OUTDOOR_CATEGORY_OPTIONS, outdoorCategoryLabel } from '@/config/outdoorCategories'
 import { publishArticleWithHydration } from '@/utils/publishArticle'
-import { triggerSiteRebuild } from '@/utils/triggerRebuild'
 import type { Article } from '@/types/article'
 
 const PAGE_SIZE = 20
@@ -142,8 +141,6 @@ export default function AdminArticleList() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [rebuildState, setRebuildState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [rebuildMessage, setRebuildMessage] = useState('')
   const [articleCost, setArticleCost] = useState<Record<string, number>>({})
   const [articlePromptKey, setArticlePromptKey] = useState<Record<string, string>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -460,12 +457,7 @@ export default function AdminArticleList() {
 
       load()
 
-      const rebuild = await triggerSiteRebuild()
-      if (rebuild.ok) {
-        toast.success('Site rebuild started — article URL live in ~3 minutes')
-      } else {
-        toast.message('Published. Click Rebuild Site to generate the static article page.')
-      }
+      toast.success('Published — guide and sitemap are live (no deploy needed)')
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         toast.error('Publish timed out after 2 minutes — check Railway logs', { id: toastId })
@@ -486,19 +478,6 @@ export default function AdminArticleList() {
     else {
       toast.success('Article unpublished')
       load()
-    }
-  }
-
-  const handleRebuildSite = async () => {
-    setRebuildState('loading')
-    setRebuildMessage('Rebuilding...')
-    const result = await triggerSiteRebuild()
-    if (result.ok) {
-      setRebuildState('success')
-      setRebuildMessage(result.message)
-    } else {
-      setRebuildState('error')
-      setRebuildMessage(result.message)
     }
   }
 
@@ -583,14 +562,6 @@ export default function AdminArticleList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleRebuildSite}
-            disabled={rebuildState === 'loading'}
-            className="px-4 py-2 rounded-lg border border-white/15 text-white/70 hover:text-white hover:border-white/30 text-sm transition-all disabled:opacity-50"
-          >
-            {rebuildState === 'loading' ? 'Rebuilding...' : 'Rebuild Site'}
-          </button>
           <Link
             href="/admin/articles/new"
             className="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-semibold text-sm transition-all"
@@ -599,20 +570,6 @@ export default function AdminArticleList() {
           </Link>
         </div>
       </div>
-
-      {rebuildState !== 'idle' && rebuildMessage && (
-        <p
-          className={`text-sm ${
-            rebuildState === 'success'
-              ? 'text-green-400'
-              : rebuildState === 'error'
-                ? 'text-red-400'
-                : 'text-white/50'
-          }`}
-        >
-          {rebuildMessage}
-        </p>
-      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />

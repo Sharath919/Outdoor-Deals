@@ -1,48 +1,35 @@
 /**
- * Pre-generate static sitemap files into public/ at build time.
- * Runtime routes in src/app/sitemap*.xml/route.ts also serve the same XML.
+ * Ensure static sitemap files are not present under public/.
+ * Those files shadow the dynamic App Router routes and go stale between deploys.
+ * Live sitemaps are served from src/app/sitemap*.xml/route.ts (Supabase-backed).
  */
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { SITE_URL } from '../src/config/site'
-import {
-  buildSitemapIndexXml,
-  buildUrlsetXml,
-  fetchPublishedArticleUrls,
-  SITEMAP_XSL_CONTENT,
-  STATIC_SITEMAP_ROUTES,
-} from '../src/lib/server/sitemap-xml'
 
-function writeFile(filename: string, content: string): void {
-  const outputPath = path.resolve(process.cwd(), `public/${filename}`)
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true })
-  fs.writeFileSync(outputPath, content, 'utf-8')
-  console.log(`[sitemap] Written public/${filename}`)
+const STATIC_SITEMAP_FILES = [
+  'sitemap.xml',
+  'sitemap-pages.xml',
+  'sitemap-posts.xml',
+  'sitemap.xsl',
+]
+
+function main() {
+  const publicDir = path.resolve(process.cwd(), 'public')
+  let removed = 0
+
+  for (const filename of STATIC_SITEMAP_FILES) {
+    const outputPath = path.join(publicDir, filename)
+    if (fs.existsSync(outputPath)) {
+      fs.unlinkSync(outputPath)
+      console.log(`[sitemap] Removed public/${filename} (dynamic route will serve this path)`)
+      removed += 1
+    }
+  }
+
+  if (removed === 0) {
+    console.log('[sitemap] No static sitemap files in public/ — dynamic routes are source of truth')
+  }
 }
 
-async function main() {
-  console.log(`[sitemap] Generating sitemap for ${SITE_URL}...\n`)
-
-  const articleUrls = await fetchPublishedArticleUrls()
-  const pageUrls = [...STATIC_SITEMAP_ROUTES]
-
-  writeFile('sitemap.xsl', SITEMAP_XSL_CONTENT)
-  writeFile('sitemap.xml', buildSitemapIndexXml())
-  writeFile('sitemap-pages.xml', buildUrlsetXml(pageUrls, false))
-  writeFile('sitemap-posts.xml', buildUrlsetXml(articleUrls, true))
-
-  const totalImages = articleUrls.reduce((sum, u) => sum + (u.images?.length ?? 0), 0)
-  console.log(`
-[sitemap] Summary:
-   Static pages          : ${pageUrls.length}
-   Published guides      : ${articleUrls.length}
-   Total images tagged   : ${totalImages}
-   Total URLs            : ${pageUrls.length + articleUrls.length}
-`)
-}
-
-main().catch((err) => {
-  console.error('[sitemap] Generation failed:', err)
-  process.exit(1)
-})
+main()

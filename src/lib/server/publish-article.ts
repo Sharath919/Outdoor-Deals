@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { revalidatePath } from 'next/cache'
+import { revalidatePublishedContent } from '@/lib/server/revalidate-published-content'
 import { hydrateArticleRecord } from '@/lib/server/article-hydration'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
@@ -131,9 +131,7 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
     warnings.push(`Published with hydration errors — ${hydration.error}`)
   }
 
-  if (row.slug) {
-    revalidatePath(`/guides/${row.slug}`)
-  }
+  revalidatePublishedContent(row.slug)
 
   return jsonResponse({
     success: true,

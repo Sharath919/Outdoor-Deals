@@ -271,4 +271,4 @@ ${XSL_PI}
 </sitemapindex>`
 }
 
-export const SITEMAP_CACHE_CONTROL = 'public, max-age=3600, s-maxage=3600'
+export const SITEMAP_CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
