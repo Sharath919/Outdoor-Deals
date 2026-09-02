@@ -18,6 +18,7 @@ import { getBuiltInArticleMachinePrompt } from '@/config/defaultArticleMachinePr
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
 import { marked } from 'marked'
 import { revalidatePublishedContent } from '@/lib/server/revalidate-published-content'
+import { submitGuideToIndexNow } from '@/lib/server/indexnow'
 
 export const maxDuration = 180
 
@@ -876,6 +877,7 @@ export async function handlePost(request: Request): Promise<Response> {
       .eq('id', scheduleId)
 
     revalidatePublishedContent(article.slug)
+    await submitGuideToIndexNow(article.slug)
 
     return jsonResponse({
       success: true,

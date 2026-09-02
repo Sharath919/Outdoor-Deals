@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePublishedContent } from '@/lib/server/revalidate-published-content'
+import { submitGuideToIndexNow } from '@/lib/server/indexnow'
 import { hydrateArticleRecord } from '@/lib/server/article-hydration'
 import { isAdminAccessToken } from '@/lib/server/admin-auth'
 import { readAmazonAffiliateServerConfig } from '@/lib/server/amazon-affiliate-config'
@@ -132,6 +133,7 @@ export async function handlePublishArticle(request: Request): Promise<Response> 
   }
 
   revalidatePublishedContent(row.slug)
+  await submitGuideToIndexNow(row.slug)
 
   return jsonResponse({
     success: true,
